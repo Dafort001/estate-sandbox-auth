@@ -11,6 +11,9 @@ interface StorageData {
 }
 
 export interface IStorage {
+  // Initialization
+  ready(): Promise<void>;
+  
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
@@ -27,32 +30,43 @@ export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private sessions: Map<string, Session>;
   private shouldPersist: boolean;
+  private isReady: boolean = false;
 
   constructor() {
     this.users = new Map();
     this.sessions = new Map();
     this.shouldPersist = process.env.DEV_PERSIST === "true";
-    
-    // Load data on initialization if persistence is enabled
-    if (this.shouldPersist) {
-      this.loadData().catch(() => {
-        console.log("No existing data file found, starting fresh");
-      });
-    }
   }
 
-  private async loadData(): Promise<void> {
+  async ready(): Promise<void> {
+    if (this.isReady) {
+      return;
+    }
+
+    if (!this.shouldPersist) {
+      this.isReady = true;
+      return;
+    }
+
     try {
       const data = await fs.readFile(PERSIST_FILE, "utf-8");
       const parsed: StorageData = JSON.parse(data);
       
-      this.users = new Map(parsed.users.map(u => [u.id, u]));
-      this.sessions = new Map(parsed.sessions.map(s => [s.id, s]));
+      // Populate maps with loaded data
+      for (const user of parsed.users) {
+        this.users.set(user.id, user);
+      }
       
-      console.log(`Loaded ${this.users.size} users and ${this.sessions.size} sessions from disk`);
+      for (const session of parsed.sessions) {
+        this.sessions.set(session.id, session);
+      }
+      
+      console.log(`✅ Loaded ${this.users.size} users and ${this.sessions.size} sessions from disk`);
     } catch (error) {
-      throw error;
+      console.log("📝 No existing data file found, starting with empty storage");
     }
+
+    this.isReady = true;
   }
 
   private async persistData(): Promise<void> {

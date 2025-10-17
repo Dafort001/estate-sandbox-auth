@@ -29,14 +29,14 @@ export async function verifyPassword(
 
 // Session configuration
 export const SESSION_CONFIG = {
-  expiresIn: 1000 * 60 * 60 * 24 * 30, // 30 days
+  expiresIn: 1000 * 60 * 60 * 24 * 30, // 30 days in milliseconds
   cookieName: "auth_session",
   cookieOptions: {
     httpOnly: true,
     sameSite: "lax" as const,
     secure: process.env.NODE_ENV === "production",
     path: "/",
-    maxAge: 1000 * 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24 * 30, // 30 days in seconds
   },
 };
 

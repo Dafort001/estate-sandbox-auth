@@ -200,14 +200,22 @@ app.get("/", (c) => {
   return c.redirect("/public/auth.html");
 });
 
-const port = process.env.PORT || 5000;
+// Start server with async initialization
+async function startServer() {
+  const port = process.env.PORT || 5000;
 
-console.log(`🚀 Server starting on http://0.0.0.0:${port}`);
-console.log(`📝 Auth sandbox available at http://localhost:${port}/public/auth.html`);
-console.log(`💾 Persistence: ${process.env.DEV_PERSIST === "true" ? "ENABLED (JSON file)" : "DISABLED (in-memory only)"}`);
+  // Initialize storage before starting server
+  await storage.ready();
 
-serve({
-  fetch: app.fetch,
-  port: Number(port),
-  hostname: "0.0.0.0",
-});
+  console.log(`🚀 Server starting on http://0.0.0.0:${port}`);
+  console.log(`📝 Auth sandbox available at http://localhost:${port}/public/auth.html`);
+  console.log(`💾 Persistence: ${process.env.DEV_PERSIST === "true" ? "ENABLED (JSON file)" : "DISABLED (in-memory only)"}`);
+
+  serve({
+    fetch: app.fetch,
+    port: Number(port),
+    hostname: "0.0.0.0",
+  });
+}
+
+startServer();
