@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Auth Sandbox - Development Testing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      /* Light mode colors */
+      --bg: 0 0% 98%;
+      --surface: 0 0% 100%;
+      --primary: 217 91% 50%;
+      --success: 142 71% 45%;
+      --error: 0 72% 51%;
+      --text-primary: 220 15% 15%;
+      --text-secondary: 220 10% 45%;
+      --border: 220 10% 88%;
+      --input-bg: 220 10% 95%;
+    }
+
+    .dark {
+      /* Dark mode colors */
+      --bg: 220 15% 12%;
+      --surface: 220 15% 16%;
+      --primary: 217 91% 60%;
+      --success: 142 76% 45%;
+      --error: 0 84% 60%;
+      --text-primary: 220 15% 95%;
+      --text-secondary: 220 10% 70%;
+      --border: 220 12% 22%;
+      --input-bg: 220 14% 18%;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: hsl(var(--bg));
+      color: hsl(var(--text-primary));
+      line-height: 1.6;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    .container {
+      max-width: 56rem;
+      margin: 0 auto;
+      padding: 3rem 1.5rem;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 3rem;
+    }
+
+    h1 {
+      font-size: 2rem;
+      font-weight: 600;
+      line-height: 1.2;
+    }
+
+    .theme-toggle {
+      background: hsl(var(--surface));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.5rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: hsl(var(--text-primary));
+      transition: all 0.2s ease;
+    }
+
+    .theme-toggle:hover {
+      background: hsl(var(--input-bg));
+    }
+
+    .card {
+      background: hsl(var(--surface));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.5rem;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .card h2 {
+      font-size: 1.25rem;
+      font-weight: 600;
+      margin-bottom: 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      border-bottom: 1px solid hsl(var(--border));
+    }
+
+    .tab {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 0.75rem 1.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: hsl(var(--text-secondary));
+      transition: all 0.2s ease;
+    }
+
+    .tab:hover {
+      color: hsl(var(--text-primary));
+    }
+
+    .tab.active {
+      color: hsl(var(--primary));
+      border-bottom-color: hsl(var(--primary));
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.875rem;
+      font-weight: 500;
+      margin-bottom: 0.5rem;
+    }
+
+    input {
+      width: 100%;
+      background: hsl(var(--input-bg));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.5rem;
+      padding: 0.75rem 1rem;
+      font-size: 0.875rem;
+      color: hsl(var(--text-primary));
+      transition: all 0.2s ease;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: hsl(var(--primary));
+      box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+    }
+
+    .btn {
+      background: hsl(var(--primary));
+      color: white;
+      border: none;
+      border-radius: 0.5rem;
+      padding: 0.75rem 1.5rem;
+      font-size: 0.875rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .btn:hover:not(:disabled) {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid hsl(var(--border));
+      color: hsl(var(--text-primary));
+    }
+
+    .btn-outline:hover:not(:disabled) {
+      background: hsl(var(--input-bg));
+    }
+
+    .btn-destructive {
+      background: hsl(var(--error));
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 500;
+    }
+
+    .badge-success {
+      background: hsl(var(--success) / 0.1);
+      color: hsl(var(--success));
+    }
+
+    .badge-error {
+      background: hsl(var(--error) / 0.1);
+      color: hsl(var(--error));
+    }
+
+    .badge-info {
+      background: hsl(var(--primary) / 0.1);
+      color: hsl(var(--primary));
+    }
+
+    .status-panel {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .status-item {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .status-label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: hsl(var(--text-secondary));
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.5rem;
+    }
+
+    .status-value {
+      font-size: 0.875rem;
+      font-family: 'JetBrains Mono', monospace;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .code-block {
+      background: hsl(var(--input-bg));
+      border: 1px solid hsl(var(--border));
+      border-radius: 0.5rem;
+      padding: 1rem;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.75rem;
+      overflow-x: auto;
+      max-height: 400px;
+      overflow-y: auto;
+      margin-top: 1rem;
+    }
+
+    .code-block pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .copy-btn {
+      background: transparent;
+      border: none;
+      color: hsl(var(--text-secondary));
+      cursor: pointer;
+      padding: 0.25rem;
+      border-radius: 0.25rem;
+      transition: all 0.2s ease;
+    }
+
+    .copy-btn:hover {
+      color: hsl(var(--text-primary));
+      background: hsl(var(--input-bg));
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 3rem 1rem;
+      color: hsl(var(--text-secondary));
+    }
+
+    .empty-state svg {
+      width: 3rem;
+      height: 3rem;
+      margin: 0 auto 1rem;
+      opacity: 0.5;
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 1rem;
+      height: 1rem;
+      border: 2px solid currentColor;
+      border-right-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    .alert {
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      margin-bottom: 1rem;
+      font-size: 0.875rem;
+    }
+
+    .alert-success {
+      background: hsl(var(--success) / 0.1);
+      border: 1px solid hsl(var(--success) / 0.2);
+      color: hsl(var(--success));
+    }
+
+    .alert-error {
+      background: hsl(var(--error) / 0.1);
+      border: 1px solid hsl(var(--error) / 0.2);
+      color: hsl(var(--error));
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    .json-key { color: hsl(var(--primary)); }
+    .json-string { color: hsl(var(--success)); }
+    .json-number { color: hsl(217 91% 70%); }
+    .json-boolean { color: hsl(280 85% 65%); }
+    .json-null { color: hsl(var(--text-secondary)); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🔐 Auth Sandbox</h1>
+      <button class="theme-toggle" data-testid="button-theme-toggle" onclick="toggleTheme()">
+        <span id="theme-icon">🌙</span> <span id="theme-text">Dark</span>
+      </button>
+    </header>
+
+    <div id="alert-container"></div>
+
+    <!-- Auth Forms -->
+    <div class="card">
+      <h2>Authentication</h2>
+      <div class="tabs">
+        <button class="tab active" data-testid="tab-signup" onclick="switchTab('signup')">Signup</button>
+        <button class="tab" data-testid="tab-login" onclick="switchTab('login')">Login</button>
+      </div>
+
+      <div id="signup-tab" class="tab-content active">
+        <form id="signup-form" data-testid="form-signup">
+          <div class="form-group">
+            <label for="signup-email">Email</label>
+            <input 
+              type="email" 
+              id="signup-email" 
+              data-testid="input-signup-email"
+              placeholder="you@example.com" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="signup-password">Password</label>
+            <input 
+              type="password" 
+              id="signup-password"
+              data-testid="input-signup-password"
+              placeholder="Minimum 8 characters" 
+              required
+            >
+          </div>
+          <button type="submit" class="btn" data-testid="button-signup">
+            <span id="signup-spinner" class="spinner hidden"></span>
+            Sign Up
+          </button>
+        </form>
+      </div>
+
+      <div id="login-tab" class="tab-content">
+        <form id="login-form" data-testid="form-login">
+          <div class="form-group">
+            <label for="login-email">Email</label>
+            <input 
+              type="email" 
+              id="login-email"
+              data-testid="input-login-email"
+              placeholder="you@example.com" 
+              required
+            >
+          </div>
+          <div class="form-group">
+            <label for="login-password">Password</label>
+            <input 
+              type="password" 
+              id="login-password"
+              data-testid="input-login-password"
+              placeholder="Enter your password" 
+              required
+            >
+          </div>
+          <button type="submit" class="btn" data-testid="button-login">
+            <span id="login-spinner" class="spinner hidden"></span>
+            Log In
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Session Status -->
+    <div class="card">
+      <h2>Session Status</h2>
+      
+      <div id="session-authenticated" class="hidden">
+        <div class="status-panel">
+          <div class="status-item">
+            <div class="status-label">Status</div>
+            <div class="status-value">
+              <span class="badge badge-success" data-testid="badge-authenticated">✓ Authenticated</span>
+            </div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">User ID</div>
+            <div class="status-value">
+              <span id="user-id" data-testid="text-user-id">-</span>
+              <button class="copy-btn" data-testid="button-copy-user-id" onclick="copyToClipboard('user-id')">📋</button>
+            </div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Email</div>
+            <div class="status-value" id="user-email" data-testid="text-user-email">-</div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Session ID</div>
+            <div class="status-value">
+              <span id="session-id" data-testid="text-session-id">-</span>
+              <button class="copy-btn" data-testid="button-copy-session-id" onclick="copyToClipboard('session-id')">📋</button>
+            </div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Expires</div>
+            <div class="status-value" id="session-expires" data-testid="text-session-expires">-</div>
+          </div>
+        </div>
+        
+        <div style="margin-top: 1.5rem; display: flex; gap: 0.75rem;">
+          <button class="btn" data-testid="button-refresh-session" onclick="checkSession()">
+            <span id="refresh-spinner" class="spinner hidden"></span>
+            Refresh Session
+          </button>
+          <button class="btn btn-destructive" data-testid="button-logout" onclick="logout()">
+            <span id="logout-spinner" class="spinner hidden"></span>
+            Logout
+          </button>
+        </div>
+      </div>
+
+      <div id="session-unauthenticated" class="empty-state">
+        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path>
+        </svg>
+        <p>Not authenticated</p>
+        <p style="font-size: 0.75rem; margin-top: 0.5rem;">Sign up or log in to create a session</p>
+      </div>
+    </div>
+
+    <!-- Response Viewer -->
+    <div class="card">
+      <h2>Last API Response</h2>
+      <div id="response-viewer">
+        <div class="empty-state">
+          <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+          </svg>
+          <p>No API calls yet</p>
+          <p style="font-size: 0.75rem; margin-top: 0.5rem;">Response data will appear here</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSession = null;
+
+    // Theme toggle
+    function toggleTheme() {
+      const html = document.documentElement;
+      const isDark = html.classList.contains('dark');
+      
+      if (isDark) {
+        html.classList.remove('dark');
+        document.getElementById('theme-icon').textContent = '☀️';
+        document.getElementById('theme-text').textContent = 'Light';
+        localStorage.setItem('theme', 'light');
+      } else {
+        html.classList.add('dark');
+        document.getElementById('theme-icon').textContent = '🌙';
+        document.getElementById('theme-text').textContent = 'Dark';
+        localStorage.setItem('theme', 'dark');
+      }
+    }
+
+    // Initialize theme
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light') {
+      toggleTheme();
+    }
+
+    // Tab switching
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      document.querySelector(`[data-testid="tab-${tab}"]`).classList.add('active');
+      document.getElementById(`${tab}-tab`).classList.add('active');
+    }
+
+    // Show alert
+    function showAlert(message, type = 'success') {
+      const container = document.getElementById('alert-container');
+      const alert = document.createElement('div');
+      alert.className = `alert alert-${type}`;
+      alert.textContent = message;
+      container.appendChild(alert);
+      
+      setTimeout(() => alert.remove(), 5000);
+    }
+
+    // Format JSON with syntax highlighting
+    function formatJSON(obj) {
+      const json = JSON.stringify(obj, null, 2);
+      return json.replace(/(".*?"):|(".*?")|(\d+)|(\btrue\b|\bfalse\b)|(\bnull\b)/g, (match, key, str, num, bool, nil) => {
+        if (key) return `<span class="json-key">${key}</span>:`;
+        if (str) return `<span class="json-string">${str}</span>`;
+        if (num) return `<span class="json-number">${num}</span>`;
+        if (bool) return `<span class="json-boolean">${bool}</span>`;
+        if (nil) return `<span class="json-null">${nil}</span>`;
+        return match;
+      });
+    }
+
+    // Update response viewer
+    function updateResponseViewer(data, endpoint) {
+      const viewer = document.getElementById('response-viewer');
+      viewer.innerHTML = `
+        <div class="status-panel">
+          <div class="status-item">
+            <div class="status-label">Endpoint</div>
+            <div class="status-value"><span class="badge badge-info">${endpoint}</span></div>
+          </div>
+          <div class="status-item">
+            <div class="status-label">Timestamp</div>
+            <div class="status-value">${new Date().toLocaleTimeString()}</div>
+          </div>
+        </div>
+        <div class="code-block" data-testid="response-json">
+          <pre>${formatJSON(data)}</pre>
+        </div>
+      `;
+    }
+
+    // Update session UI
+    function updateSessionUI(data) {
+      if (data && data.user) {
+        currentSession = data;
+        document.getElementById('session-authenticated').classList.remove('hidden');
+        document.getElementById('session-unauthenticated').classList.add('hidden');
+        
+        document.getElementById('user-id').textContent = data.user.id;
+        document.getElementById('user-email').textContent = data.user.email;
+        document.getElementById('session-id').textContent = data.session.id;
+        
+        const expiresDate = new Date(data.session.expiresAt);
+        const now = new Date();
+        const daysLeft = Math.ceil((expiresDate - now) / (1000 * 60 * 60 * 24));
+        document.getElementById('session-expires').textContent = `${expiresDate.toLocaleDateString()} (${daysLeft} days)`;
+      } else {
+        currentSession = null;
+        document.getElementById('session-authenticated').classList.add('hidden');
+        document.getElementById('session-unauthenticated').classList.remove('hidden');
+      }
+    }
+
+    // Copy to clipboard
+    function copyToClipboard(elementId) {
+      const text = document.getElementById(elementId).textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        showAlert('Copied to clipboard!', 'success');
+      });
+    }
+
+    // Check session
+    async function checkSession() {
+      const spinner = document.getElementById('refresh-spinner');
+      spinner.classList.remove('hidden');
+      
+      try {
+        const response = await fetch('/api/me', {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          updateResponseViewer(data, 'GET /api/me');
+          updateSessionUI(data);
+          showAlert('Session refreshed successfully', 'success');
+        } else {
+          updateSessionUI(null);
+          const error = await response.json();
+          updateResponseViewer(error, 'GET /api/me');
+        }
+      } catch (error) {
+        showAlert('Failed to check session', 'error');
+      } finally {
+        spinner.classList.add('hidden');
+      }
+    }
+
+    // Signup
+    document.getElementById('signup-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const spinner = document.getElementById('signup-spinner');
+      const btn = e.target.querySelector('button[type="submit"]');
+      
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      
+      const email = document.getElementById('signup-email').value;
+      const password = document.getElementById('signup-password').value;
+      
+      try {
+        const response = await fetch('/api/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        updateResponseViewer(data, 'POST /api/signup');
+        
+        if (response.ok) {
+          updateSessionUI(data);
+          showAlert('Account created successfully!', 'success');
+          e.target.reset();
+        } else {
+          showAlert(data.error || 'Signup failed', 'error');
+        }
+      } catch (error) {
+        showAlert('Network error', 'error');
+      } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+      }
+    });
+
+    // Login
+    document.getElementById('login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const spinner = document.getElementById('login-spinner');
+      const btn = e.target.querySelector('button[type="submit"]');
+      
+      btn.disabled = true;
+      spinner.classList.remove('hidden');
+      
+      const email = document.getElementById('login-email').value;
+      const password = document.getElementById('login-password').value;
+      
+      try {
+        const response = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ email, password })
+        });
+        
+        const data = await response.json();
+        updateResponseViewer(data, 'POST /api/login');
+        
+        if (response.ok) {
+          updateSessionUI(data);
+          showAlert('Logged in successfully!', 'success');
+          e.target.reset();
+        } else {
+          showAlert(data.error || 'Login failed', 'error');
+        }
+      } catch (error) {
+        showAlert('Network error', 'error');
+      } finally {
+        btn.disabled = false;
+        spinner.classList.add('hidden');
+      }
+    });
+
+    // Logout
+    async function logout() {
+      const spinner = document.getElementById('logout-spinner');
+      spinner.classList.remove('hidden');
+      
+      try {
+        const response = await fetch('/api/logout', {
+          method: 'POST',
+          credentials: 'include'
+        });
+        
+        const data = await response.json();
+        updateResponseViewer(data, 'POST /api/logout');
+        
+        if (response.ok) {
+          updateSessionUI(null);
+          showAlert('Logged out successfully', 'success');
+        } else {
+          showAlert('Logout failed', 'error');
+        }
+      } catch (error) {
+        showAlert('Network error', 'error');
+      } finally {
+        spinner.classList.add('hidden');
+      }
+    }
+
+    // Check session on load
+    checkSession();
+  </script>
+</body>
+</html>
