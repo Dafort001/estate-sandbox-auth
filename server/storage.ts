@@ -1,14 +1,7 @@
-import { type User, type Session } from "@shared/schema";
+import { users, sessions, type User, type Session } from "@shared/schema";
+import { db } from "./db";
+import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
-import { promises as fs } from "fs";
-import { join } from "path";
-
-const PERSIST_FILE = join(process.cwd(), "data", "auth-data.json");
-
-interface StorageData {
-  users: User[];
-  sessions: Session[];
-}
 
 export interface IStorage {
   // Initialization
@@ -26,93 +19,39 @@ export interface IStorage {
   deleteUserSessions(userId: string): Promise<void>;
 }
 
-export class MemStorage implements IStorage {
-  private users: Map<string, User>;
-  private sessions: Map<string, Session>;
-  private shouldPersist: boolean;
-  private isReady: boolean = false;
-
-  constructor() {
-    this.users = new Map();
-    this.sessions = new Map();
-    this.shouldPersist = process.env.DEV_PERSIST === "true";
-  }
-
+export class DatabaseStorage implements IStorage {
   async ready(): Promise<void> {
-    if (this.isReady) {
-      return;
-    }
-
-    if (!this.shouldPersist) {
-      this.isReady = true;
-      return;
-    }
-
-    try {
-      const data = await fs.readFile(PERSIST_FILE, "utf-8");
-      const parsed: StorageData = JSON.parse(data);
-      
-      // Populate maps with loaded data
-      for (const user of parsed.users) {
-        this.users.set(user.id, user);
-      }
-      
-      for (const session of parsed.sessions) {
-        this.sessions.set(session.id, session);
-      }
-      
-      console.log(`✅ Loaded ${this.users.size} users and ${this.sessions.size} sessions from disk`);
-    } catch (error) {
-      console.log("📝 No existing data file found, starting with empty storage");
-    }
-
-    this.isReady = true;
-  }
-
-  private async persistData(): Promise<void> {
-    if (!this.shouldPersist) return;
-
-    try {
-      await fs.mkdir(join(process.cwd(), "data"), { recursive: true });
-      
-      const data: StorageData = {
-        users: Array.from(this.users.values()),
-        sessions: Array.from(this.sessions.values()),
-      };
-      
-      await fs.writeFile(PERSIST_FILE, JSON.stringify(data, null, 2), "utf-8");
-    } catch (error) {
-      console.error("Failed to persist data:", error);
-    }
+    // Database connection is established in db.ts
+    // No initialization needed
   }
 
   async getUser(id: string): Promise<User | undefined> {
-    return this.users.get(id);
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user || undefined;
   }
 
   async getUserByEmail(email: string): Promise<User | undefined> {
-    return Array.from(this.users.values()).find(
-      (user) => user.email.toLowerCase() === email.toLowerCase(),
-    );
+    // Normalize email to lowercase for case-insensitive lookup
+    const [user] = await db.select().from(users).where(eq(users.email, email.toLowerCase()));
+    return user || undefined;
   }
 
   async createUser(email: string, hashedPassword: string): Promise<User> {
     const id = randomUUID();
-    const user: User = {
-      id,
-      email,
-      hashedPassword,
-      createdAt: Date.now(),
-    };
-    
-    this.users.set(id, user);
-    await this.persistData();
-    
+    const [user] = await db
+      .insert(users)
+      .values({
+        id,
+        email: email.toLowerCase(), // Store email in lowercase
+        hashedPassword,
+        createdAt: Date.now(),
+      })
+      .returning();
     return user;
   }
 
   async getSession(id: string): Promise<Session | undefined> {
-    const session = this.sessions.get(id);
+    const [session] = await db.select().from(sessions).where(eq(sessions.id, id));
     
     // Remove expired sessions
     if (session && session.expiresAt < Date.now()) {
@@ -120,38 +59,29 @@ export class MemStorage implements IStorage {
       return undefined;
     }
     
-    return session;
+    return session || undefined;
   }
 
   async createSession(userId: string, expiresAt: number): Promise<Session> {
     const id = randomUUID();
-    const session: Session = {
-      id,
-      userId,
-      expiresAt,
-    };
-    
-    this.sessions.set(id, session);
-    await this.persistData();
-    
+    const [session] = await db
+      .insert(sessions)
+      .values({
+        id,
+        userId,
+        expiresAt,
+      })
+      .returning();
     return session;
   }
 
   async deleteSession(id: string): Promise<void> {
-    this.sessions.delete(id);
-    await this.persistData();
+    await db.delete(sessions).where(eq(sessions.id, id));
   }
 
   async deleteUserSessions(userId: string): Promise<void> {
-    const userSessions = Array.from(this.sessions.entries())
-      .filter(([_, session]) => session.userId === userId);
-    
-    for (const [sessionId] of userSessions) {
-      this.sessions.delete(sessionId);
-    }
-    
-    await this.persistData();
+    await db.delete(sessions).where(eq(sessions.userId, userId));
   }
 }
 
-export const storage = new MemStorage();
+export const storage = new DatabaseStorage();

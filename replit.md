@@ -1,25 +1,32 @@
 # Auth Development Sandbox
 
 ## Overview
-A Node.js + TypeScript authentication sandbox built with Hono web framework. Designed for local development with future Cloudflare Workers deployment. Features cookie-based sessions, in-memory storage with optional JSON persistence, and a beautiful testing interface.
+A Node.js + TypeScript authentication sandbox built with Hono web framework. Features PostgreSQL database with Drizzle ORM, cookie-based sessions, and a beautiful testing interface. Designed for production use with plans for JWT auth, password reset, and rate limiting.
 
 ## Purpose
-Development sandbox for real-estate website authentication flows. Allows rapid testing of signup, login, logout, and session management before migrating to production (Cloudflare D1 + Workers).
+Development sandbox for real-estate website authentication flows. Provides complete auth system with database persistence for signup, login, logout, and session management.
 
 ## Current State
-**Status**: ✅ Fully functional MVP
+**Status**: ✅ PostgreSQL Migration Complete + Next Phase Features In Progress
 - Hono server with auth routes
+- PostgreSQL database with Drizzle ORM
 - Custom session management (cookie-based)
 - Scrypt password hashing
-- In-memory storage with optional persistence
 - Beautiful HTML test interface with dark/light mode
 - Complete type safety with TypeScript
 
 ## Recent Changes
-**2025-10-17**: Initial implementation
+**2025-10-17 (Phase 2)**: PostgreSQL Migration
+- Migrated from in-memory storage to PostgreSQL database
+- Added Drizzle ORM schema with users and sessions tables
+- Created DatabaseStorage adapter implementing IStorage interface
+- All routes work unchanged (same interface)
+- Removed JSON file persistence (no longer needed)
+
+**2025-10-17 (Phase 1)**: Initial implementation
 - Created Hono-based auth server (replacing Express)
 - Implemented custom authentication (Lucia v3 was deprecated)
-- Built storage layer with in-memory + optional JSON persistence
+- Built storage layer with flexible IStorage interface
 - Created beautiful auth.html test interface
 - Added scrypt password hashing
 - Configured cookie-based sessions (httpOnly, sameSite=lax)
@@ -29,7 +36,7 @@ Development sandbox for real-estate website authentication flows. Allows rapid t
 ### Backend (Hono)
 - **Framework**: Hono (Cloudflare Workers compatible)
 - **Auth Routes**: `/api/signup`, `/api/login`, `/api/logout`, `/api/me`
-- **Storage**: In-memory with optional JSON file persistence
+- **Database**: PostgreSQL (Neon) with Drizzle ORM
 - **Sessions**: 30-day cookie-based sessions with auto-expiration
 - **Security**: Scrypt hashing, httpOnly cookies, CSRF protection
 
@@ -46,8 +53,8 @@ Development sandbox for real-estate website authentication flows. Allows rapid t
 - **Runtime**: Node.js 20
 - **Framework**: Hono v4
 - **Language**: TypeScript 5.6
+- **Database**: PostgreSQL (Neon) + Drizzle ORM
 - **Password**: Scrypt (Node.js crypto)
-- **Storage**: In-memory Map (swappable to D1)
 
 ## User Preferences
 - Wants Hono for Cloudflare Workers compatibility
@@ -64,11 +71,11 @@ npm run dev
 Server: http://localhost:5000
 Interface: http://localhost:5000/public/auth.html
 
-### With Persistence
+### Database Migration
 ```bash
-DEV_PERSIST=true npm run dev
+npm run db:push
 ```
-Data saved to: `data/auth-data.json`
+Syncs Drizzle schema to PostgreSQL database
 
 ## API Endpoints
 
@@ -90,14 +97,15 @@ Data saved to: `data/auth-data.json`
 
 - `server/index.ts` - Hono server with all routes
 - `server/auth.ts` - Password hashing & session config
-- `server/storage.ts` - Storage interface + in-memory implementation
-- `shared/schema.ts` - Shared types and validation schemas
+- `server/storage.ts` - Storage interface + DatabaseStorage implementation
+- `server/db.ts` - Drizzle database connection
+- `shared/schema.ts` - Drizzle schema, types, and validation
 - `public/auth.html` - Test interface
 
 ## Environment Variables
 
 - `PORT` - Server port (default: 5000)
-- `DEV_PERSIST` - Enable JSON persistence (default: false)
+- `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit)
 - `NODE_ENV` - Environment mode
 
 ## Security Configuration

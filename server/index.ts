@@ -209,7 +209,7 @@ async function startServer() {
 
   console.log(`🚀 Server starting on http://0.0.0.0:${port}`);
   console.log(`📝 Auth sandbox available at http://localhost:${port}/public/auth.html`);
-  console.log(`💾 Persistence: ${process.env.DEV_PERSIST === "true" ? "ENABLED (JSON file)" : "DISABLED (in-memory only)"}`);
+  console.log(`💾 Database: PostgreSQL (Neon)`);
 
   serve({
     fetch: app.fetch,
