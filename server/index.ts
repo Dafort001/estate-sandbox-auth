@@ -1,14 +1,63 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
+import { getConnInfo } from "@hono/node-server/conninfo";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
 import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, type UserResponse } from "@shared/schema";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { generateTokenPair, verifyAccessToken, extractBearerToken } from "./jwt";
 import { randomUUID } from "crypto";
+import { rateLimiter } from "hono-rate-limiter";
 
 const app = new Hono();
+
+// Helper to get client IP (prioritizes trusted, non-spoofable sources)
+function getClientIP(c: any): string {
+  // In production with Cloudflare, use cf-connecting-ip (trusted, set by Cloudflare edge)
+  const cfIP = c.req.header("cf-connecting-ip");
+  if (cfIP && process.env.NODE_ENV === "production") {
+    return cfIP;
+  }
+
+  // Use Hono's getConnInfo to get the real socket IP (can't be spoofed)
+  const connInfo = getConnInfo(c);
+  if (connInfo.remote.address) {
+    return connInfo.remote.address;
+  }
+
+  // Fallback for local development (all requests will share this key)
+  return "local";
+}
+
+// Rate limiters - stricter limits for sensitive auth operations
+const loginLimiter = rateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 5, // 5 login attempts per minute per IP
+  standardHeaders: "draft-6",
+  keyGenerator: (c) => getClientIP(c),
+});
+
+const signupLimiter = rateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 3, // 3 signup attempts per minute per IP
+  standardHeaders: "draft-6",
+  keyGenerator: (c) => getClientIP(c),
+});
+
+const passwordResetLimiter = rateLimiter({
+  windowMs: 60 * 60 * 1000, // 1 hour
+  limit: 10, // 10 password reset requests per hour per IP
+  standardHeaders: "draft-6",
+  keyGenerator: (c) => getClientIP(c),
+});
+
+const tokenRefreshLimiter = rateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 10, // 10 token refresh attempts per minute per IP
+  standardHeaders: "draft-6",
+  keyGenerator: (c) => getClientIP(c),
+});
 
 // Serve static files from public directory
 app.use("/public/*", serveStatic({ root: "./" }));
@@ -75,7 +124,7 @@ async function getAuthUser(c: any) {
 }
 
 // POST /api/signup
-app.post("/api/signup", async (c) => {
+app.post("/api/signup", signupLimiter, async (c) => {
   try {
     const body = await c.req.json();
     const validation = signupSchema.safeParse(body);
@@ -127,7 +176,7 @@ app.post("/api/signup", async (c) => {
 });
 
 // POST /api/login (supports both cookie and JWT auth via ?token=true)
-app.post("/api/login", async (c) => {
+app.post("/api/login", loginLimiter, async (c) => {
   try {
     const body = await c.req.json();
     const validation = loginSchema.safeParse(body);
@@ -256,7 +305,7 @@ app.get("/api/me", async (c) => {
 });
 
 // POST /api/token/refresh - Refresh access token using refresh token
-app.post("/api/token/refresh", async (c) => {
+app.post("/api/token/refresh", tokenRefreshLimiter, async (c) => {
   try {
     const body = await c.req.json();
     const { refreshToken } = body;
@@ -306,7 +355,7 @@ app.post("/api/token/refresh", async (c) => {
 });
 
 // POST /api/password-reset/request - Request password reset token
-app.post("/api/password-reset/request", async (c) => {
+app.post("/api/password-reset/request", passwordResetLimiter, async (c) => {
   try {
     const body = await c.req.json();
     const validation = passwordResetRequestSchema.safeParse(body);
@@ -358,7 +407,7 @@ app.post("/api/password-reset/request", async (c) => {
 });
 
 // POST /api/password-reset/confirm - Confirm password reset with token
-app.post("/api/password-reset/confirm", async (c) => {
+app.post("/api/password-reset/confirm", passwordResetLimiter, async (c) => {
   try {
     const body = await c.req.json();
     const validation = passwordResetConfirmSchema.safeParse(body);
