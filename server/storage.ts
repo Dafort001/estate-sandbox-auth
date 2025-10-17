@@ -1,4 +1,4 @@
-import { users, sessions, type User, type Session } from "@shared/schema";
+import { users, sessions, refreshTokens, type User, type Session, type RefreshToken } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -17,6 +17,12 @@ export interface IStorage {
   createSession(userId: string, expiresAt: number): Promise<Session>;
   deleteSession(id: string): Promise<void>;
   deleteUserSessions(userId: string): Promise<void>;
+  
+  // Refresh token operations
+  getRefreshToken(token: string): Promise<RefreshToken | undefined>;
+  createRefreshToken(id: string, userId: string, token: string, expiresAt: number): Promise<RefreshToken>;
+  deleteRefreshToken(token: string): Promise<void>;
+  deleteUserRefreshTokens(userId: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -81,6 +87,40 @@ export class DatabaseStorage implements IStorage {
 
   async deleteUserSessions(userId: string): Promise<void> {
     await db.delete(sessions).where(eq(sessions.userId, userId));
+  }
+
+  async getRefreshToken(token: string): Promise<RefreshToken | undefined> {
+    const [refreshToken] = await db.select().from(refreshTokens).where(eq(refreshTokens.token, token));
+    
+    // Remove expired tokens
+    if (refreshToken && refreshToken.expiresAt < Date.now()) {
+      await this.deleteRefreshToken(token);
+      return undefined;
+    }
+    
+    return refreshToken || undefined;
+  }
+
+  async createRefreshToken(id: string, userId: string, token: string, expiresAt: number): Promise<RefreshToken> {
+    const [refreshToken] = await db
+      .insert(refreshTokens)
+      .values({
+        id,
+        userId,
+        token,
+        expiresAt,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return refreshToken;
+  }
+
+  async deleteRefreshToken(token: string): Promise<void> {
+    await db.delete(refreshTokens).where(eq(refreshTokens.token, token));
+  }
+
+  async deleteUserRefreshTokens(userId: string): Promise<void> {
+    await db.delete(refreshTokens).where(eq(refreshTokens.userId, userId));
   }
 }
 

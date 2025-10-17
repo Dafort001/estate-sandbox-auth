@@ -5,6 +5,7 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
 import { signupSchema, loginSchema, type UserResponse } from "@shared/schema";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
+import { generateTokenPair, verifyAccessToken, extractBearerToken } from "./jwt";
 
 const app = new Hono();
 
@@ -12,7 +13,7 @@ const app = new Hono();
 app.use("/public/*", serveStatic({ root: "./" }));
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));
 
-// Middleware to get current user from session
+// Middleware to get current user from session cookie
 async function getSessionUser(c: any) {
   const sessionId = getCookie(c, SESSION_CONFIG.cookieName);
   
@@ -34,6 +35,42 @@ async function getSessionUser(c: any) {
   }
 
   return { user, session };
+}
+
+// Middleware to get current user from Bearer token
+async function getBearerUser(c: any) {
+  const authHeader = c.req.header("Authorization");
+  const token = extractBearerToken(authHeader);
+  
+  if (!token) {
+    return null;
+  }
+
+  const payload = verifyAccessToken(token);
+  
+  if (!payload) {
+    return null;
+  }
+
+  const user = await storage.getUser(payload.userId);
+  
+  if (!user) {
+    return null;
+  }
+
+  return { user };
+}
+
+// Middleware to get current user from either session or Bearer token
+async function getAuthUser(c: any) {
+  // Try Bearer token first
+  const bearerUser = await getBearerUser(c);
+  if (bearerUser) {
+    return bearerUser;
+  }
+
+  // Fallback to session cookie
+  return await getSessionUser(c);
 }
 
 // POST /api/signup
@@ -88,7 +125,7 @@ app.post("/api/signup", async (c) => {
   }
 });
 
-// POST /api/login
+// POST /api/login (supports both cookie and JWT auth via ?token=true)
 app.post("/api/login", async (c) => {
   try {
     const body = await c.req.json();
@@ -102,6 +139,7 @@ app.post("/api/login", async (c) => {
     }
 
     const { email, password } = validation.data;
+    const useToken = c.req.query("token") === "true";
 
     // Find user
     const user = await storage.getUserByEmail(email);
@@ -115,19 +153,38 @@ app.post("/api/login", async (c) => {
       return c.json({ error: "Invalid email or password" }, 401);
     }
 
-    // Create session
-    const expiresAt = Date.now() + SESSION_CONFIG.expiresIn;
-    const session = await storage.createSession(user.id, expiresAt);
-
-    // Set cookie
-    setCookie(c, SESSION_CONFIG.cookieName, session.id, SESSION_CONFIG.cookieOptions);
-
-    // Return user data (without password)
     const userResponse: UserResponse = {
       id: user.id,
       email: user.email,
       createdAt: user.createdAt,
     };
+
+    // If JWT requested, generate tokens
+    if (useToken) {
+      const tokens = generateTokenPair(user.id, user.email);
+      
+      // Store refresh token in database
+      await storage.createRefreshToken(
+        tokens.refreshTokenId,
+        user.id,
+        tokens.refreshToken,
+        tokens.refreshTokenExpiry
+      );
+
+      return c.json({
+        user: userResponse,
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+        expiresIn: 900, // 15 minutes in seconds
+      });
+    }
+
+    // Otherwise, create cookie-based session
+    const expiresAt = Date.now() + SESSION_CONFIG.expiresIn;
+    const session = await storage.createSession(user.id, expiresAt);
+
+    // Set cookie
+    setCookie(c, SESSION_CONFIG.cookieName, session.id, SESSION_CONFIG.cookieOptions);
 
     return c.json({
       user: userResponse,
@@ -160,32 +217,89 @@ app.post("/api/logout", async (c) => {
   }
 });
 
-// GET /api/me
+// GET /api/me (supports both cookie and Bearer token auth)
 app.get("/api/me", async (c) => {
   try {
-    const sessionUser = await getSessionUser(c);
+    const authUser = await getAuthUser(c);
 
-    if (!sessionUser) {
+    if (!authUser) {
       return c.json({ error: "Not authenticated" }, 401);
     }
 
-    const { user, session } = sessionUser;
-
     const userResponse: UserResponse = {
-      id: user.id,
-      email: user.email,
-      createdAt: user.createdAt,
+      id: authUser.user.id,
+      email: authUser.user.email,
+      createdAt: authUser.user.createdAt,
     };
 
+    // If session exists, include it
+    if ("session" in authUser) {
+      const sessionAuth = authUser as { user: any; session: any };
+      return c.json({
+        user: userResponse,
+        session: {
+          id: sessionAuth.session.id,
+          expiresAt: sessionAuth.session.expiresAt,
+        },
+      });
+    }
+
+    // Bearer token auth - no session
     return c.json({
       user: userResponse,
-      session: {
-        id: session.id,
-        expiresAt: session.expiresAt,
-      },
     });
   } catch (error) {
     console.error("Get user error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/token/refresh - Refresh access token using refresh token
+app.post("/api/token/refresh", async (c) => {
+  try {
+    const body = await c.req.json();
+    const { refreshToken } = body;
+
+    if (!refreshToken) {
+      return c.json({ error: "Refresh token required" }, 400);
+    }
+
+    // Verify refresh token exists in database
+    const storedToken = await storage.getRefreshToken(refreshToken);
+    
+    if (!storedToken) {
+      return c.json({ error: "Invalid refresh token" }, 401);
+    }
+
+    // Get user
+    const user = await storage.getUser(storedToken.userId);
+    
+    if (!user) {
+      await storage.deleteRefreshToken(refreshToken);
+      return c.json({ error: "User not found" }, 401);
+    }
+
+    // Generate new token pair
+    const tokens = generateTokenPair(user.id, user.email);
+    
+    // Delete old refresh token
+    await storage.deleteRefreshToken(refreshToken);
+    
+    // Store new refresh token
+    await storage.createRefreshToken(
+      tokens.refreshTokenId,
+      user.id,
+      tokens.refreshToken,
+      tokens.refreshTokenExpiry
+    );
+
+    return c.json({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: 900, // 15 minutes in seconds
+    });
+  } catch (error) {
+    console.error("Token refresh error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });
