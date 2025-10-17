@@ -3,9 +3,10 @@ import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
-import { signupSchema, loginSchema, type UserResponse } from "@shared/schema";
+import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, type UserResponse } from "@shared/schema";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { generateTokenPair, verifyAccessToken, extractBearerToken } from "./jwt";
+import { randomUUID } from "crypto";
 
 const app = new Hono();
 
@@ -300,6 +301,113 @@ app.post("/api/token/refresh", async (c) => {
     });
   } catch (error) {
     console.error("Token refresh error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/password-reset/request - Request password reset token
+app.post("/api/password-reset/request", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validation = passwordResetRequestSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const { email } = validation.data;
+
+    // Find user
+    const user = await storage.getUserByEmail(email);
+    
+    // For security, always return success even if user doesn't exist
+    if (!user) {
+      console.log(`Password reset requested for non-existent email: ${email}`);
+      return c.json({ success: true, message: "If the email exists, a reset link will be sent" });
+    }
+
+    // Generate reset token (valid for 1 hour)
+    const token = randomUUID();
+    const id = randomUUID();
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    // Delete any existing reset tokens for this user
+    await storage.deleteUserPasswordResetTokens(user.id);
+
+    // Store reset token
+    await storage.createPasswordResetToken(id, user.id, token, expiresAt);
+
+    // In development, log the reset link to console
+    // In production, this would send an email
+    const resetLink = `http://localhost:${process.env.PORT || 5000}/public/auth.html?reset=${token}`;
+    console.log(`\n📧 Password Reset Link for ${email}:\n${resetLink}\n`);
+
+    return c.json({ 
+      success: true, 
+      message: "If the email exists, a reset link will be sent",
+      // Only include token in development
+      ...(process.env.NODE_ENV === "development" && { resetToken: token })
+    });
+  } catch (error) {
+    console.error("Password reset request error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/password-reset/confirm - Confirm password reset with token
+app.post("/api/password-reset/confirm", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validation = passwordResetConfirmSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const { token, newPassword } = validation.data;
+
+    // Verify reset token
+    const resetToken = await storage.getPasswordResetToken(token);
+    
+    if (!resetToken) {
+      return c.json({ error: "Invalid or expired reset token" }, 401);
+    }
+
+    // Get user
+    const user = await storage.getUser(resetToken.userId);
+    
+    if (!user) {
+      await storage.deletePasswordResetToken(token);
+      return c.json({ error: "User not found" }, 401);
+    }
+
+    // Hash new password
+    const hashedPassword = await hashPassword(newPassword);
+    
+    // Update user password
+    await storage.updateUserPassword(user.id, hashedPassword);
+    
+    // Delete the reset token (one-time use)
+    await storage.deletePasswordResetToken(token);
+    
+    // Invalidate all sessions and refresh tokens for security
+    await storage.deleteUserSessions(user.id);
+    await storage.deleteUserRefreshTokens(user.id);
+
+    console.log(`✅ Password reset successful for ${user.email}`);
+
+    return c.json({ 
+      success: true, 
+      message: "Password reset successful. Please log in with your new password." 
+    });
+  } catch (error) {
+    console.error("Password reset confirm error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });
