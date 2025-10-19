@@ -8,6 +8,8 @@ import Login from "@/pages/login";
 import Register from "@/pages/register";
 import Dashboard from "@/pages/dashboard";
 import Gallery from "@/pages/gallery";
+import Blog from "@/pages/blog";
+import BlogPost from "@/pages/blog-post";
 import OrderForm from "@/pages/order-form";
 import NotFound from "@/pages/not-found";
 
@@ -19,6 +21,8 @@ function Router() {
       <Route path="/register" component={Register} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/gallery" component={Gallery} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/order" component={OrderForm} />
       <Route component={NotFound} />
     </Switch>
