@@ -1,124 +1,180 @@
-# Auth Development Sandbox
+# pix.immo - Real Estate Media Platform
 
-A Node.js + TypeScript web application with Hono and custom authentication, designed as a development sandbox for real-estate website projects. Built for local development with future Cloudflare Workers deployment in mind.
+A professional real estate media platform built with Node.js 22 + TypeScript. Features AI-based image captioning (Replicate API), secure authentication, role-based access control, and property photography order management. Designed for Cloudflare Workers deployment with a dual-server development architecture.
 
-## Features
+## 🚧 Current Status
 
-- **Hono Web Framework**: Lightweight, fast, and Cloudflare Workers-compatible
-- **Cookie-Based Sessions**: Secure, httpOnly cookies with scrypt password hashing
-- **In-Memory Storage**: Default storage with optional JSON file persistence
-- **Beautiful Test Interface**: Dark/light mode, real-time session status, JSON response viewer
-- **TypeScript**: Full type safety across frontend and backend
-- **Ready for Migration**: Designed to easily swap to Cloudflare D1 later
+**Task #1 of Technical Briefing: Core Foundation in Progress**
+
+Completed features:
+- ✅ Session-based authentication (cookie sessions)
+- ✅ Role-based access control (admin/client)
+- ✅ Order management system
+- ✅ Password reset flow with secure tokens
+- ✅ React SPA with 6 pages (Home, Login, Register, Dashboard, Gallery, OrderForm)
+- ✅ Rate limiting on all auth endpoints
+- ✅ PostgreSQL database with Drizzle ORM
+- ✅ Complete E2E test coverage
+
+Upcoming tasks:
+- 🔄 AI image captioning via Replicate API (Task #2)
+- 🔄 Mailgun email integration for password reset (Task #3)
+- 🔄 Image upload to Cloudflare R2 (Task #4)
+- 🔄 Admin dashboard and analytics (Task #5)
 
 ## Tech Stack
 
-- **Runtime**: Node.js 20
-- **Framework**: Hono (Express alternative, CF Workers compatible)
-- **Auth**: Custom session management with scrypt password hashing
-- **Storage**: In-memory with optional JSON persistence
-- **Language**: TypeScript
+- **Runtime**: Node.js 22 (Cloudflare Workers compatible)
+- **Backend**: Hono v4 (edge-native web framework)
+- **Frontend**: React 18 + Wouter + Shadcn UI + Tailwind CSS
+- **Database**: PostgreSQL (Neon) + Drizzle ORM
+- **Auth**: Session cookies (primary), JWT/Bearer tokens (optional for API)
+- **Dev Server**: Express + Vite (HMR enabled)
+- **AI**: Replicate API (CogVLM image captioning)
+- **Email**: Mailgun (transactional emails)
+- **Deployment**: Cloudflare Workers + Pages
+
+## System Architecture
+
+### Core Components
+
+**Cloudflare Workers + R2**
+- Serverless API endpoints (Hono framework)
+- Object storage for images and metadata
+- Edge computing for low-latency responses
+
+**Replicate (AI Captioning)**
+- CogVLM-based image analysis
+- Generates marketing-ready property descriptions
+- Returns `.txt` (human-readable) and `.json` (CRM-compatible) formats
+
+**PostgreSQL + Drizzle ORM**
+- User accounts, sessions, and order data
+- Type-safe database queries
+- Secure credential storage
+
+**Mailgun**
+- Password reset emails
+- Order notifications
+- Transactional messaging
+
+**React SPA**
+- Client dashboard and gallery
+- Order form with property details
+- Responsive design with dark/light mode
+
+### Development vs Production
+
+**Development Mode** (`npm run dev`):
+- Express + Vite dev server with HMR
+- API proxy to Hono backend
+- Hot reload for instant feedback
+- Runs on http://localhost:5000
+
+**Production Mode** (Cloudflare Workers):
+- Hono app deployed to Workers
+- Static assets served from Pages or R2
+- PostgreSQL connection via Neon
+- Global edge deployment
 
 ## Getting Started
 
-### Install Dependencies
+### Prerequisites
+
+- Node.js 22+
+- PostgreSQL database (or Replit's built-in database)
+- Environment variables configured (see below)
+
+### Installation
+
 ```bash
 npm install
 ```
 
-### Run Development Server
+### Environment Variables
+
+Create a `.env` file (never commit to git) or use Replit Secrets:
+
 ```bash
+# Database
+DATABASE_URL=postgresql://user:password@host:port/database
+
+# Authentication
+SESSION_SECRET=your-session-secret-here
+JWT_SECRET=your-jwt-secret-here
+
+# Email (Mailgun)
+MAILGUN_API_KEY=your-mailgun-key-here
+MAILGUN_DOMAIN=mg.yourdomain.com
+MAILGUN_FROM=noreply@pix.immo
+
+# AI Services
+REPLICATE_API_TOKEN=your-replicate-token-here
+
+# Runtime
+NODE_ENV=development
+PORT=5000
+```
+
+**⚠️ Security Note**: Never hardcode API keys or secrets in source code. Always use environment variables.
+
+### Development
+
+```bash
+# Start development server with HMR
 npm run dev
+
+# Run database migrations
+npm run db:push
+
+# Type checking
+npm run check
 ```
 
-### Enable Persistence (Optional)
+Visit:
+- React App: http://localhost:5000/
+- Auth Sandbox: http://localhost:5000/public/auth.html
+
+### Production Build
+
 ```bash
-DEV_PERSIST=true npm run dev
+# Build React frontend and Hono backend
+npm run build
+
+# Start production server
+npm start
 ```
 
-The server starts on `http://localhost:5000` and serves the auth sandbox at `/public/auth.html`.
+## API Endpoints
 
-## API Routes
+### Authentication
+- `POST /api/signup` - Create user + session (default role: client)
+- `POST /api/login` - Authenticate (cookie or JWT with ?token=true)
+- `POST /api/logout` - Invalidate session
+- `GET /api/me` - Get current user (cookie or Bearer token)
+- `POST /api/token/refresh` - Refresh JWT access token
 
-### POST /api/signup
-Create a new user account and session.
+### Password Reset
+- `POST /api/password-reset/request` - Request reset token
+- `POST /api/password-reset/confirm` - Confirm reset with token
 
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "minimum8chars"
-}
-```
+### Orders
+- `POST /api/orders` - Create property photography order
+- `GET /api/orders` - Get orders (clients: own, admins: all)
+- `GET /api/orders/:id` - Get single order
+- `PATCH /api/orders/:id/status` - Update order status (admin only)
 
-**Response:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "createdAt": 1234567890
-  },
-  "session": {
-    "id": "uuid",
-    "expiresAt": 1234567890
-  }
-}
-```
+### Health
+- `GET /api/health` - Health check
 
-### POST /api/login
-Authenticate and create a session.
+## Frontend Routes
 
-**Request Body:**
-```json
-{
-  "email": "user@example.com",
-  "password": "yourpassword"
-}
-```
-
-**Response:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "createdAt": 1234567890
-  },
-  "session": {
-    "id": "uuid",
-    "expiresAt": 1234567890
-  }
-}
-```
-
-### GET /api/me
-Get current authenticated user.
-
-**Response:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "createdAt": 1234567890
-  },
-  "session": {
-    "id": "uuid",
-    "expiresAt": 1234567890
-  }
-}
-```
-
-### POST /api/logout
-Invalidate current session.
-
-**Response:**
-```json
-{
-  "success": true
-}
-```
+- `/` - Home page (landing)
+- `/login` - Login form
+- `/register` - Registration form
+- `/dashboard` - User dashboard with orders
+- `/gallery` - Property gallery (responsive grid)
+- `/order` - Order creation form
 
 ## Data Models
 
@@ -127,8 +183,9 @@ Invalidate current session.
 {
   id: string;              // UUID
   email: string;           // Unique
-  hashedPassword: string;  // Scrypt hashed
-  createdAt: number;       // Epoch milliseconds
+  hashedPassword: string;  // Scrypt
+  role: "admin" | "client";
+  createdAt: number;
 }
 ```
 
@@ -136,73 +193,144 @@ Invalidate current session.
 ```typescript
 {
   id: string;        // UUID
-  userId: string;    // Reference to user
-  expiresAt: number; // Epoch milliseconds (30 days)
+  userId: string;
+  expiresAt: number; // 30 days
 }
 ```
+
+### Order
+```typescript
+{
+  id: string;
+  userId: string;
+  propertyName: string;
+  propertyAddress: string;
+  contactName: string;
+  contactPhone: string;
+  contactEmail: string;
+  preferredDate: string;
+  notes: string;
+  status: "pending" | "confirmed" | "completed" | "cancelled";
+  createdAt: number;
+  updatedAt: number;
+}
+```
+
+## Authorization
+
+### Client Role
+- Create orders
+- View own orders only
+- Access personal dashboard
+
+### Admin Role
+- View all orders
+- Update order status
+- Full system access
+
+## Security Features
+
+- **Password Hashing**: Scrypt with secure parameters (N=16384, r=8, p=1)
+- **Session Cookies**: HttpOnly, SameSite=lax, 30-day expiry
+- **Rate Limiting**: IP-based protection on auth endpoints
+  - Login: 5/min per IP
+  - Signup: 3/min per IP
+  - Password Reset: 10/hour per IP
+- **CSRF Protection**: SameSite cookies
+- **XSS Prevention**: HttpOnly cookies
+- **Role-Based Access**: Enforced at API level
+
+## Cloudflare Workers Deployment
+
+The application is designed for seamless Workers deployment:
+
+### Architecture Benefits
+- **Hono Framework**: Built for edge runtimes (Workers, Deno, Bun)
+- **No Node.js APIs**: Routes use standard Web APIs
+- **Modular Storage**: Drizzle ORM works with D1 or Neon PostgreSQL
+- **Static Assets**: React SPA deploys to Pages or R2
+
+### Deployment Steps
+1. Build React app: `npm run build`
+2. Deploy Hono backend to Cloudflare Workers
+3. Serve static files from Cloudflare Pages or R2
+4. Configure environment variables in Workers dashboard
+5. Connect to Neon PostgreSQL (Workers-compatible)
+
+### Why It Works
+- All HTTP handling uses Hono's Workers-compatible API
+- Database queries use Drizzle ORM (supports D1 and PostgreSQL)
+- No Node.js-specific dependencies in route handlers
+- Session management can use Workers KV or external store
 
 ## Project Structure
 
 ```
 ├── server/
-│   ├── index.ts      # Hono server with all routes
-│   ├── auth.ts       # Password hashing & session config
-│   └── storage.ts    # In-memory storage with persistence
+│   ├── dev.ts          # Express + Vite development server
+│   ├── index.ts        # Hono production server (Workers-ready)
+│   ├── auth.ts         # Password hashing & session config
+│   ├── jwt.ts          # JWT utilities (optional)
+│   ├── storage.ts      # Storage interface + PostgreSQL adapter
+│   └── db.ts           # Drizzle database connection
+├── client/
+│   └── src/
+│       ├── App.tsx     # Router configuration
+│       ├── pages/      # React pages
+│       └── lib/        # TanStack Query config
 ├── shared/
-│   └── schema.ts     # Shared TypeScript types and validation
+│   └── schema.ts       # Drizzle schema + Zod validation
 ├── public/
-│   └── auth.html     # Beautiful test interface
+│   └── auth.html       # Legacy auth sandbox
 └── package.json
 ```
 
-## Environment Variables
+## Rate Limiting
 
-- `PORT`: Server port (default: 5000)
-- `DEV_PERSIST`: Enable JSON file persistence (default: false)
-- `NODE_ENV`: Environment (development/production)
+All authentication endpoints are protected:
 
-## Cookie Configuration
+| Endpoint | Limit | Window |
+|----------|-------|--------|
+| Login | 5 requests | 1 minute |
+| Signup | 3 requests | 1 minute |
+| Password Reset | 10 requests | 1 hour |
+| Token Refresh | 10 requests | 1 minute |
 
-- **Name**: `auth_session`
-- **HttpOnly**: `true`
-- **SameSite**: `lax`
-- **Secure**: `false` (dev), `true` (production)
-- **Max-Age**: 30 days
-- **Path**: `/`
+Exceeded limits return `429 Too Many Requests` with `RateLimit-*` headers.
 
-## Future Migration to Cloudflare D1
+## Development Workflow
 
-The storage interface (`IStorage`) is designed for easy swapping:
+1. **Make changes** to frontend or backend
+2. **Auto-reload** via Vite HMR
+3. **Test** with integrated auth sandbox
+4. **Migrate database** with `npm run db:push`
+5. **Deploy** to Cloudflare Workers
 
-1. Replace `MemStorage` with a D1 adapter
-2. Update storage methods to use D1 queries
-3. Deploy to Cloudflare Workers
-4. Routes remain unchanged
+## GDPR & Privacy
 
-## Security Features
+- Images are anonymized before AI processing (e.g., "Livingroom_01.jpg")
+- No personal identifiers sent to external servers
+- Processing transparency disclosed to users
+- Non-EU AI processing (Replicate) explicitly stated
 
-- Scrypt password hashing with secure parameters
-- HttpOnly cookies prevent XSS attacks
-- SameSite cookies prevent CSRF
-- Session expiration after 30 days
-- Automatic expired session cleanup
+## Next Steps (Roadmap)
 
-## Development
+According to the technical briefing:
 
-### Type Checking
-```bash
-npm run check
-```
+1. **Task #2**: Cloudflare Upload Worker Integration
+2. **Task #3**: AI Caption Automation (Replicate API)
+3. **Task #4**: Gallery JSON Integration + CRM Export
+4. **Task #5**: Admin Dashboard + Analytics
+5. **Task #6**: Optional Modal Migration (performance)
 
-### Build for Production
-```bash
-npm run build
-npm start
-```
+## Contributing
 
-## Notes
+This is a private project following the pix.immo technical briefing v2.
 
-- Data resets on server restart (unless persistence is enabled)
-- Designed for development/testing only
-- Sessions are stored in-memory (swap for Redis/D1 in production)
-- Perfect for prototyping auth flows before production deployment
+## License
+
+MIT
+
+---
+
+Built with ❤️ for modern real estate workflows.

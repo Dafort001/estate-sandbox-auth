@@ -261,6 +261,7 @@ All secrets and API keys are managed securely via environment variables. **Never
 **Email (Mailgun):**
 - `MAILGUN_API_KEY` - Mailgun API key for sending emails (required for password reset emails)
 - `MAILGUN_DOMAIN` - Mailgun domain for sending emails (e.g., mg.yourdomain.com)
+- `MAILGUN_FROM` - Sender email address for Mailgun (e.g., noreply@pix.immo)
 
 **AI Services (Future):**
 - `REPLICATE_API_TOKEN` - Replicate API token for AI image captioning (required for AI features)
@@ -285,6 +286,7 @@ SESSION_SECRET=your-session-secret-here
 JWT_SECRET=your-jwt-secret-here
 MAILGUN_API_KEY=your-mailgun-key-here
 MAILGUN_DOMAIN=mg.yourdomain.com
+MAILGUN_FROM=noreply@pix.immo
 REPLICATE_API_TOKEN=your-replicate-token-here
 ```
 
