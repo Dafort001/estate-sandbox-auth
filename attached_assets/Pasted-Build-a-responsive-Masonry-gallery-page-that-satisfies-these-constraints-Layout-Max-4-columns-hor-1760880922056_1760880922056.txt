@@ -1,0 +1,87 @@
+Build a responsive Masonry gallery page that satisfies these constraints:
+
+Layout
+
+Max 4 columns horizontally on large screens.
+
+Use CSS Columns–based masonry (preferred) or an equivalent grid that mimics masonry behavior.
+
+Vertical flow should comfortably handle ~45 images (no pagination needed).
+
+Gaps between items: uniform, ≤ 20px (use 16px as default).
+
+No rounded corners anywhere.
+
+Image mix & sizes (approximate)
+
+About 75% Landscape images: 1500×1000 px (3:2).
+
+About 10% Portrait images: 1000×1500 px (2:3).
+
+About 15% Square images: 1000×1000 px (1:1).
+
+Provide a small fixture dataset of ~45 items matching those ratios. Use placeholders or local assets; the exact pixels can be scaled, but keep aspect ratios.
+
+Hover overlay
+
+On hover (and focus for keyboard accessibility), show a full-image overlay: semi-transparent gray layer covering the tile.
+
+Overlay must display the image’s ALT text in white text, centered (both axes).
+
+Smooth fade-in/out transition (~150–250ms).
+
+Ensure overlay is pointer-events: none except for links if present.
+
+Accessibility & performance
+
+Every image must have an alt attribute (use the same string for the overlay).
+
+Add loading="lazy" to images.
+
+Respect reduced-motion (@media (prefers-reduced-motion: reduce)).
+
+Responsiveness
+
+Columns by breakpoint (example):
+
+≥1200px: 4 columns
+
+900–1199px: 3 columns
+
+600–899px: 2 columns
+
+<600px: 1 column
+
+Keep the same uniform gap at all sizes.
+
+Styling rules
+
+Use break-inside: avoid; on items to prevent column breaks.
+
+No borders or shadows by default.
+
+Neutral, minimal styling; easy to theme later.
+
+Deliverables
+
+A single index.html + styles.css (and optional tiny script.js only if needed).
+
+A small JSON or inline JS array with ~45 items (title/alt, src, aspect type).
+
+Clear instructions where to replace placeholder image URLs with real ones.
+
+Acceptance check
+
+Grid never exceeds 4 columns on desktop.
+
+~45 tiles render with the requested aspect ratio distribution (≈75/10/15).
+
+Hover overlay shows alt text in white, full-coverage gray, with smooth transition.
+
+Uniform spacing ≤20px at all breakpoints.
+
+No rounded corners.
+
+Optional niceties (if quick):
+
+Simple lightbox on click (no dependencies) is a plus, but not required.

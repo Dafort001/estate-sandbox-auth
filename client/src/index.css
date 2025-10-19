@@ -353,3 +353,86 @@
     inset: -1px;
   }
 }
+
+/* Masonry Gallery Layout */
+.masonry-gallery {
+  column-gap: 16px;
+  column-fill: auto;
+}
+
+/* Responsive column breakpoints */
+/* Mobile: 1 column (< 600px) */
+.masonry-gallery {
+  column-count: 1;
+}
+
+/* Tablet: 2 columns (600-899px) */
+@media (min-width: 600px) {
+  .masonry-gallery {
+    column-count: 2;
+  }
+}
+
+/* Desktop: 3 columns (900-1199px) */
+@media (min-width: 900px) {
+  .masonry-gallery {
+    column-count: 3;
+  }
+}
+
+/* Large Desktop: 4 columns (≥1200px) */
+@media (min-width: 1200px) {
+  .masonry-gallery {
+    column-count: 4;
+  }
+}
+
+/* Masonry items */
+.masonry-item {
+  break-inside: avoid;
+  margin-bottom: 16px;
+  position: relative;
+  overflow: hidden;
+  border-radius: 0; /* No rounded corners */
+}
+
+.masonry-item img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 0; /* No rounded corners */
+}
+
+/* Hover overlay */
+.masonry-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+  pointer-events: none;
+  padding: 1rem;
+}
+
+.masonry-item:hover .masonry-overlay,
+.masonry-item:focus-within .masonry-overlay {
+  opacity: 1;
+}
+
+.masonry-overlay-text {
+  color: white;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 500;
+}
+
+/* Respect reduced motion preference */
+@media (prefers-reduced-motion: reduce) {
+  .masonry-overlay {
+    transition: none;
+  }
+}
