@@ -1,189 +1,321 @@
+import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Sparkles, Zap, Image as ImageIcon } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 export default function Home() {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const stripRef = useRef<HTMLDivElement>(null);
+
+  // Close menu on escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isMenuOpen) {
+        setIsMenuOpen(false);
+      }
+    };
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
+  }, [isMenuOpen]);
+
+  // Prevent body scroll when menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [isMenuOpen]);
+
   return (
-    <div className="min-h-screen">
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <Camera className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold">pix.immo</span>
+    <div className="min-h-screen bg-white">
+      {/* Header */}
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
+        <div className="flex items-center justify-between px-[5vw] py-4">
+          <div className="text-base font-semibold tracking-wide" data-testid="brand-logo">
+            PIX.IMMO
           </div>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" data-testid="button-login">Login</Button>
-            </Link>
-            <Link href="/register">
-              <Button data-testid="button-register">Get Started</Button>
-            </Link>
-          </div>
+          <button
+            onClick={() => setIsMenuOpen(true)}
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+            aria-label="Menü öffnen"
+            aria-expanded={isMenuOpen}
+            data-testid="button-menu-open"
+          >
+            <Menu className="h-5 w-5" />
+            <span className="text-sm text-gray-500">Menü</span>
+          </button>
         </div>
       </header>
 
-      <section className="relative flex min-h-[90vh] items-center justify-center overflow-hidden bg-gradient-to-br from-primary/10 via-background to-accent/5">
-        <div className="container relative z-10 mx-auto px-6 text-center">
-          <h1 className="mb-6 text-5xl font-bold tracking-tight md:text-7xl">
-            Professional Property
-            <br />
-            <span className="text-primary">Photography & AI Captions</span>
-          </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground md:text-xl">
-            Transform your real estate listings with stunning photography and AI-powered image descriptions. 
-            Fast, professional, and effortless.
-          </p>
-          <div className="flex flex-wrap items-center justify-center gap-4">
-            <Link href="/register">
-              <Button size="lg" className="text-base" data-testid="button-hero-start">
-                Start Your First Order
-              </Button>
-            </Link>
-            <Link href="/gallery">
-              <Button size="lg" variant="outline" className="text-base backdrop-blur-md" data-testid="button-hero-gallery">
-                View Gallery
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Generous whitespace */}
+      <div className="h-[35vh]" aria-hidden="true" />
 
-      <section className="py-24">
-        <div className="container mx-auto px-6">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold md:text-4xl">Why Choose pix.immo?</h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              Everything you need to showcase properties at their best
+      {/* Hero Section */}
+      <section className="px-[5vw] mb-8">
+        <div className="grid md:grid-cols-2 gap-8">
+          {/* Left: Hero text */}
+          <div className="flex flex-col justify-center">
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6" data-testid="hero-title">
+              PIX.IMMO
+            </h1>
+            <p className="text-xl md:text-2xl text-gray-600 tracking-wide" data-testid="hero-subtitle">
+              Corporate real estate photography
             </p>
           </div>
-          <div className="grid gap-8 md:grid-cols-3">
-            <Card data-testid="card-feature-ai">
-              <CardHeader>
-                <Sparkles className="mb-4 h-12 w-12 text-primary" />
-                <CardTitle>AI-Powered Captions</CardTitle>
-                <CardDescription>
-                  Automatically generate compelling, SEO-friendly descriptions for every image
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card data-testid="card-feature-quality">
-              <CardHeader>
-                <Camera className="mb-4 h-12 w-12 text-primary" />
-                <CardTitle>Professional Quality</CardTitle>
-                <CardDescription>
-                  Expert photographers capture your properties in the best light
-                </CardDescription>
-              </CardHeader>
-            </Card>
-            <Card data-testid="card-feature-fast">
-              <CardHeader>
-                <Zap className="mb-4 h-12 w-12 text-primary" />
-                <CardTitle>Fast Turnaround</CardTitle>
-                <CardDescription>
-                  Get your photos and captions delivered within 48 hours
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          </div>
+
+          {/* Right: Empty (whitespace) */}
+          <div aria-hidden="true" />
         </div>
       </section>
 
-      <section className="bg-muted/30 py-24">
-        <div className="container mx-auto px-6">
-          <div className="mb-16 text-center">
-            <h2 className="mb-4 text-3xl font-bold md:text-4xl">How It Works</h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground">
-              Three simple steps to amazing property listings
-            </p>
+      {/* Navigation Links (plain text buttons) */}
+      <nav className="flex items-center gap-6 px-[5vw] py-4 mb-8" aria-label="Hauptnavigation">
+        <Link href="/gallery">
+          <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-portfolio">Portfolio</span>
+        </Link>
+        <a href="#preise" className="text-sm font-medium hover:underline" data-testid="link-preise">
+          Preise
+        </a>
+        <a href="#blog" className="text-sm font-medium hover:underline" data-testid="link-blog">
+          Blog
+        </a>
+        <Link href="/login">
+          <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-login">Login</span>
+        </Link>
+      </nav>
+
+      {/* Horizontal Image Strip */}
+      <div className="overflow-hidden bg-gray-100 h-[48vh] min-h-[300px] max-h-[620px]" data-testid="image-strip-container">
+        <div
+          ref={stripRef}
+          className="flex gap-[11px] h-full image-strip"
+          style={{
+            animation: "scroll 120s linear infinite",
+            willChange: "transform"
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.animationPlayState = "paused";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.animationPlayState = "running";
+          }}
+        >
+          {/* Set A - Original */}
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} data-testid="strip-img-1">
+            <span className="text-white text-sm">Dummy 1200×800</span>
           </div>
-          <div className="grid gap-12 md:grid-cols-3">
-            <div className="text-center" data-testid="step-order">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                1
-              </div>
-              <h3 className="mb-3 text-xl font-semibold">Place Your Order</h3>
-              <p className="text-muted-foreground">
-                Submit property details and schedule a photography session
-              </p>
-            </div>
-            <div className="text-center" data-testid="step-shoot">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                2
-              </div>
-              <h3 className="mb-3 text-xl font-semibold">Professional Shoot</h3>
-              <p className="text-muted-foreground">
-                Our photographers capture stunning images of your property
-              </p>
-            </div>
-            <div className="text-center" data-testid="step-deliver">
-              <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-primary text-2xl font-bold text-primary-foreground">
-                3
-              </div>
-              <h3 className="mb-3 text-xl font-semibold">AI Processing & Delivery</h3>
-              <p className="text-muted-foreground">
-                Receive high-quality images with AI-generated captions
-              </p>
-            </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center" style={{ width: "auto", aspectRatio: "2/3" }} data-testid="strip-img-2">
+            <span className="text-white text-sm">Dummy 560×880</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} data-testid="strip-img-3">
+            <span className="text-white text-sm">Dummy 1050×700</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center" style={{ width: "auto", aspectRatio: "1/1" }} data-testid="strip-img-4">
+            <span className="text-white text-sm">Dummy 820×820</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} data-testid="strip-img-5">
+            <span className="text-white text-sm">Dummy 1200×700</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center" style={{ width: "auto", aspectRatio: "2/3" }} data-testid="strip-img-6">
+            <span className="text-white text-sm">Dummy 700×1050</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} data-testid="strip-img-7">
+            <span className="text-white text-sm">Dummy 1500×1000</span>
+          </div>
+
+          {/* Set B - Duplicate for seamless loop */}
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1200×800</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center" style={{ width: "auto", aspectRatio: "2/3" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 560×880</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1050×700</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center" style={{ width: "auto", aspectRatio: "1/1" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 820×820</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1200×700</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center" style={{ width: "auto", aspectRatio: "2/3" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 700×1050</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1500×1000</span>
+          </div>
+
+          {/* Set C - Second duplicate for smooth infinite scroll */}
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-300 to-gray-400 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1200×800</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center" style={{ width: "auto", aspectRatio: "2/3" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 560×880</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-500 to-gray-600 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1050×700</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-600 to-gray-700 flex items-center justify-center" style={{ width: "auto", aspectRatio: "1/1" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 820×820</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1200×700</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-300 to-gray-500 flex items-center justify-center" style={{ width: "auto", aspectRatio: "2/3" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 700×1050</span>
+          </div>
+          <div className="h-full flex-shrink-0 bg-gradient-to-br from-gray-400 to-gray-600 flex items-center justify-center" style={{ width: "auto", aspectRatio: "3/2" }} aria-hidden="true">
+            <span className="text-white text-sm">Dummy 1500×1000</span>
           </div>
         </div>
-      </section>
+      </div>
 
-      <section className="py-24">
-        <div className="container mx-auto px-6 text-center">
-          <ImageIcon className="mx-auto mb-6 h-16 w-16 text-primary" />
-          <h2 className="mb-4 text-3xl font-bold md:text-4xl">Ready to Get Started?</h2>
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-muted-foreground">
-            Join hundreds of real estate professionals using pix.immo to elevate their listings
-          </p>
-          <Link href="/register">
-            <Button size="lg" className="text-base" data-testid="button-cta-start">
-              Create Your First Order
-            </Button>
-          </Link>
-        </div>
-      </section>
+      {/* Whitespace after strip */}
+      <div className="h-[40vh]" aria-hidden="true" />
 
-      <footer className="border-t py-12">
-        <div className="container mx-auto px-6">
-          <div className="grid gap-8 md:grid-cols-4">
-            <div>
-              <div className="mb-4 flex items-center gap-2">
-                <Camera className="h-5 w-5 text-primary" />
-                <span className="font-bold">pix.immo</span>
-              </div>
-              <p className="text-sm text-muted-foreground">
-                Professional property photography with AI-powered captions
-              </p>
-            </div>
-            <div>
-              <h4 className="mb-4 font-semibold">Product</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><Link href="/gallery">Gallery</Link></li>
-                <li><Link href="/dashboard">Dashboard</Link></li>
-                <li><Link href="/order">Order Now</Link></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="mb-4 font-semibold">Company</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>About</li>
-                <li>Contact</li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="mb-4 font-semibold">Resources</h4>
-              <ul className="space-y-2 text-sm text-muted-foreground">
-                <li>Help Center</li>
-                <li>Privacy Policy</li>
-              </ul>
-            </div>
-          </div>
-          <div className="mt-12 border-t pt-8 text-center text-sm text-muted-foreground">
-            © 2025 pix.immo. All rights reserved.
-          </div>
+      {/* Footer */}
+      <footer className="py-6 border-t border-gray-200">
+        <div className="flex justify-center items-center gap-6 px-[5vw] text-xs text-gray-500">
+          <a href="#impressum" className="hover:underline" data-testid="link-impressum">
+            Impressum
+          </a>
+          <a href="#datenschutz" className="hover:underline" data-testid="link-datenschutz">
+            Datenschutz
+          </a>
+          <a href="#kontakt" className="hover:underline" data-testid="link-kontakt">
+            Kontakt
+          </a>
         </div>
       </footer>
+
+      {/* Hamburger Menu Drawer */}
+      {isMenuOpen && (
+        <aside
+          className="fixed inset-0 z-50 bg-white/98 backdrop-blur-sm"
+          aria-hidden={!isMenuOpen}
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setIsMenuOpen(false);
+          }}
+          data-testid="menu-drawer"
+        >
+          <div className="max-w-2xl mx-auto px-[5vw] py-6">
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-semibold">Menü</h3>
+              <button
+                onClick={() => setIsMenuOpen(false)}
+                className="px-4 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
+                aria-label="Menü schließen"
+                data-testid="button-menu-close"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <nav>
+              <ul className="space-y-4">
+                <li>
+                  <Link href="/gallery">
+                    <span
+                      className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600 cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-portfolio"
+                    >
+                      Portfolio
+                    </span>
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#preise"
+                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    onClick={() => setIsMenuOpen(false)}
+                    data-testid="menu-link-preise"
+                  >
+                    Preise
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#blog"
+                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    onClick={() => setIsMenuOpen(false)}
+                    data-testid="menu-link-blog"
+                  >
+                    Blog
+                  </a>
+                </li>
+                <li>
+                  <Link href="/login">
+                    <span
+                      className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600 cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-login"
+                    >
+                      Login
+                    </span>
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/dashboard">
+                    <span
+                      className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600 cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-dashboard"
+                    >
+                      Dashboard
+                    </span>
+                  </Link>
+                </li>
+                <li>
+                  <a
+                    href="#impressum"
+                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    onClick={() => setIsMenuOpen(false)}
+                    data-testid="menu-link-impressum"
+                  >
+                    Impressum
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#datenschutz"
+                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    onClick={() => setIsMenuOpen(false)}
+                    data-testid="menu-link-datenschutz"
+                  >
+                    Datenschutz
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#kontakt"
+                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    onClick={() => setIsMenuOpen(false)}
+                    data-testid="menu-link-kontakt"
+                  >
+                    Kontakt
+                  </a>
+                </li>
+              </ul>
+            </nav>
+          </div>
+        </aside>
+      )}
+
+      {/* CSS Animation for image strip */}
+      <style>{`
+        @keyframes scroll {
+          0% {
+            transform: translateX(0);
+          }
+          100% {
+            transform: translateX(-66.667%);
+          }
+        }
+      `}</style>
     </div>
   );
 }
