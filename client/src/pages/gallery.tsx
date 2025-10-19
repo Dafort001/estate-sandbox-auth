@@ -125,16 +125,20 @@ export default function Gallery() {
               key={image.id}
               className="gallery-item-hover"
               data-testid={`image-${image.id}`}
-              data-caption={image.caption}
-              onClick={() => setLightboxImage(image)}
             >
-              <img
-                src={image.src}
-                alt=""
-                loading="lazy"
-                className="gallery-img"
-                data-testid={`img-${image.id}`}
-              />
+              <div 
+                className="gallery-img-wrapper"
+                data-caption={image.caption}
+                onClick={() => setLightboxImage(image)}
+              >
+                <img
+                  src={image.src}
+                  alt=""
+                  loading="lazy"
+                  className="gallery-img"
+                  data-testid={`img-${image.id}`}
+                />
+              </div>
             </div>
           ))}
         </div>
