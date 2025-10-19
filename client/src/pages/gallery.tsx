@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Camera, Home, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 
 // Fixture dataset: ~45 images with mixed aspect ratios throughout
@@ -156,27 +156,20 @@ export default function Gallery() {
 
   return (
     <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md">
+        <div className="flex items-center justify-between px-[5vw] py-4">
           <Link href="/">
-            <div className="flex items-center gap-2 hover-elevate active-elevate-2 cursor-pointer px-3 py-2 rounded-lg">
-              <Camera className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">pix.immo</span>
+            <div className="text-base font-semibold tracking-wide cursor-pointer" data-testid="brand-logo">
+              PIX.IMMO
             </div>
           </Link>
-          <div className="flex items-center gap-4">
-            <Link href="/">
-              <Button variant="ghost" data-testid="button-home">
-                <Home className="mr-2 h-4 w-4" />
-                Home
-              </Button>
-            </Link>
-            <Link href="/dashboard">
-              <Button variant="outline" data-testid="button-dashboard">
-                Dashboard
-              </Button>
-            </Link>
-          </div>
+          <button
+            className="flex items-center gap-2 hover:opacity-70 transition-opacity"
+            aria-label="Menü öffnen"
+            data-testid="button-menu-open"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
         </div>
       </header>
 
