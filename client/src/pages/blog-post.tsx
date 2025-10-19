@@ -172,7 +172,7 @@ export default function BlogPost() {
 
       {/* Content - Narrow centered text block with embedded landscape images */}
       <article className="py-12 md:py-20">
-        <div className="mx-auto px-6" style={{ maxWidth: "600px" }}>
+        <div className="w-full max-w-xl mx-auto px-6">
           {/* First text block */}
           <p className="text-base md:text-lg leading-relaxed mb-12 text-gray-800" data-testid="content-part-1">
             {post.content.part1}

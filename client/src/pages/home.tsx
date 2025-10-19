@@ -69,9 +69,11 @@ export default function Home() {
         <a href="#preise" className="text-sm font-medium hover:underline" data-testid="link-preise">
           Preise
         </a>
-        <a href="#blog" className="text-sm font-medium hover:underline" data-testid="link-blog">
-          Blog
-        </a>
+        <Link href="/blog">
+          <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-blog">
+            Blog
+          </span>
+        </Link>
         <Link href="/login">
           <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-login">Anmelden</span>
         </Link>
@@ -225,14 +227,15 @@ export default function Home() {
                   </a>
                 </li>
                 <li>
-                  <a
-                    href="#blog"
-                    className="block text-base font-medium hover:underline"
-                    onClick={() => setIsMenuOpen(false)}
-                    data-testid="menu-link-blog"
-                  >
-                    Blog
-                  </a>
+                  <Link href="/blog">
+                    <span
+                      className="block text-base font-medium hover:underline cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-blog"
+                    >
+                      Blog
+                    </span>
+                  </Link>
                 </li>
                 <li>
                   <Link href="/login">
