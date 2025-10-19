@@ -159,6 +159,7 @@ app.post("/api/signup", signupLimiter, async (c) => {
     const userResponse: UserResponse = {
       id: user.id,
       email: user.email,
+      role: user.role,
       createdAt: user.createdAt,
     };
 
@@ -206,6 +207,7 @@ app.post("/api/login", loginLimiter, async (c) => {
     const userResponse: UserResponse = {
       id: user.id,
       email: user.email,
+      role: user.role,
       createdAt: user.createdAt,
     };
 
@@ -279,6 +281,7 @@ app.get("/api/me", async (c) => {
     const userResponse: UserResponse = {
       id: authUser.user.id,
       email: authUser.user.email,
+      role: authUser.user.role,
       createdAt: authUser.user.createdAt,
     };
 

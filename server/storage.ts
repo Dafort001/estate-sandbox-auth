@@ -1,6 +1,6 @@
-import { users, sessions, refreshTokens, passwordResetTokens, type User, type Session, type RefreshToken, type PasswordResetToken } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, type User, type Session, type RefreshToken, type PasswordResetToken, type Order } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, desc } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -10,7 +10,7 @@ export interface IStorage {
   // User operations
   getUser(id: string): Promise<User | undefined>;
   getUserByEmail(email: string): Promise<User | undefined>;
-  createUser(email: string, hashedPassword: string): Promise<User>;
+  createUser(email: string, hashedPassword: string, role?: string): Promise<User>;
   
   // Session operations
   getSession(id: string): Promise<Session | undefined>;
@@ -30,6 +30,21 @@ export interface IStorage {
   deletePasswordResetToken(token: string): Promise<void>;
   deleteUserPasswordResetTokens(userId: string): Promise<void>;
   updateUserPassword(userId: string, hashedPassword: string): Promise<void>;
+  
+  // Order operations
+  createOrder(userId: string, orderData: {
+    propertyName: string;
+    contactName: string;
+    contactEmail: string;
+    contactPhone?: string;
+    propertyAddress: string;
+    preferredDate?: string;
+    notes?: string;
+  }): Promise<Order>;
+  getOrder(id: string): Promise<Order | undefined>;
+  getUserOrders(userId: string): Promise<Order[]>;
+  getAllOrders(): Promise<Order[]>;
+  updateOrderStatus(id: string, status: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -49,7 +64,7 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
-  async createUser(email: string, hashedPassword: string): Promise<User> {
+  async createUser(email: string, hashedPassword: string, role: string = "client"): Promise<User> {
     const id = randomUUID();
     const [user] = await db
       .insert(users)
@@ -57,6 +72,7 @@ export class DatabaseStorage implements IStorage {
         id,
         email: email.toLowerCase(), // Store email in lowercase
         hashedPassword,
+        role,
         createdAt: Date.now(),
       })
       .returning();
@@ -166,6 +182,51 @@ export class DatabaseStorage implements IStorage {
 
   async updateUserPassword(userId: string, hashedPassword: string): Promise<void> {
     await db.update(users).set({ hashedPassword }).where(eq(users.id, userId));
+  }
+
+  async createOrder(userId: string, orderData: {
+    propertyName: string;
+    contactName: string;
+    contactEmail: string;
+    contactPhone?: string;
+    propertyAddress: string;
+    preferredDate?: string;
+    notes?: string;
+  }): Promise<Order> {
+    const id = randomUUID();
+    const [order] = await db
+      .insert(orders)
+      .values({
+        id,
+        userId,
+        propertyName: orderData.propertyName,
+        contactName: orderData.contactName,
+        contactEmail: orderData.contactEmail,
+        contactPhone: orderData.contactPhone,
+        propertyAddress: orderData.propertyAddress,
+        preferredDate: orderData.preferredDate,
+        notes: orderData.notes,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return order;
+  }
+
+  async getOrder(id: string): Promise<Order | undefined> {
+    const [order] = await db.select().from(orders).where(eq(orders.id, id));
+    return order || undefined;
+  }
+
+  async getUserOrders(userId: string): Promise<Order[]> {
+    return await db.select().from(orders).where(eq(orders.userId, userId)).orderBy(desc(orders.createdAt));
+  }
+
+  async getAllOrders(): Promise<Order[]> {
+    return await db.select().from(orders).orderBy(desc(orders.createdAt));
+  }
+
+  async updateOrderStatus(id: string, status: string): Promise<void> {
+    await db.update(orders).set({ status }).where(eq(orders.id, id));
   }
 }
 
