@@ -67,7 +67,7 @@ export default function Gallery() {
       const grid = gridRef.current;
       if (!grid) return;
 
-      const items = grid.querySelectorAll<HTMLElement>('.masonry-grid-item');
+      const items = grid.querySelectorAll<HTMLElement>('.gallery-item-hover');
       const rowHeight = parseInt(getComputedStyle(grid).getPropertyValue('grid-auto-rows'));
       const rowGap = parseInt(getComputedStyle(grid).getPropertyValue('grid-row-gap'));
 
