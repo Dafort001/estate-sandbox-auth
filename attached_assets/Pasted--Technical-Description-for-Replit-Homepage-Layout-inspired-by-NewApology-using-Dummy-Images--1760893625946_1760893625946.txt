@@ -1,0 +1,63 @@
+
+ Technical Description for Replit – Homepage (Layout inspired by NewApology, using Dummy Images)
+Goal:
+Build a minimalist one-page layout inspired by NewApology.com (header, split hero section, horizontal image strip, and footer).
+All images should be dummy placeholders generated locally — no external assets or copied media.
+
+⚙️ Tech Stack
+Vite + React (TypeScript)
+Tailwind CSS for layout and spacing
+Framer Motion (optional, for smooth fades)
+Lenis (optional, for smooth scrolling)
+lucide-react for menu icons (hamburger / close)
+No router, no CMS, no analytics or trackers
+
+ Page Structure (Single Homepage Only)
+1. Header (sticky, white, slightly transparent)
+Left: Text logo “pix.immo”
+Center/Right: navigation links “Index”, “Information”, “Journal”
+Additional buttons on the right: “Contact” and “Deutsch”
+Mobile: collapses into a hamburger menu with a smooth fade/slide overlay
+2. Hero Section (two-column layout)
+Generous whitespace above (≈120 px)
+Left column: large dummy image area with oversized headline (placeholder “pinto”)
+Right column: large dummy image area with centered text (“PAVLO LOTNIK”)
+Subtle hover effect (slight zoom or opacity change)
+3. Horizontal Image Strip (ImageStrip)
+Full-width horizontal section below the hero
+8–12 dummy images arranged in a seamless horizontal line
+Smooth, infinite auto-scroll animation (loop)
+Auto-scroll pauses when hovered
+4. Footer
+Minimal layout:
+© 2025 pix.immo · Imprint · Privacy Policy
+
+￯ﾸﾏ Dummy Images (Path & Specifications)
+Storage path: /public/images/
+Generation: create neutral SVGs or solid-color PNG/AVIF files with overlaid text labels (e.g., “Dummy 2400×1600”)
+Required files:
+hero-left-2400x1600.avif (or .png) — green/neutral gradient, text “pinto”
+hero-right-2400x1600.avif (or .png) — white background, text “PAVLO LOTNIK”
+Image strip: strip-01…strip-12-1200x800.avif (or .png) — neutral colors or gradients, text “Dummy 1200×800”
+Alt texts: “Dummy image n” (to be replaced later)
+Performance: use loading="lazy", decoding="async", and always include width and height
+
+ Design Guidelines
+Lots of white space
+Neutral typography (system sans-serif, slightly increased letter-spacing)
+Colors: white (#fff), light gray (#f8f8f8), black (#111)
+Animations: subtle, linear (no bouncing or snapping)
+Hover states: small visual change (e.g., 1–2 % zoom or slight opacity fade)
+
+✅ Acceptance Criteria
+Runs locally in Replit with npm run dev
+Header works correctly on desktop and mobile (hamburger menu opens/closes)
+Hero section displays two dummy image tiles side by side on large screens (stacked on small screens)
+Horizontal image strip scrolls infinitely and pauses on hover
+Footer visible and correctly aligned
+No console errors; layout stable (no CLS jumps)
+No external assets — only local dummy images
+
+ Notes
+Dummy images can later be replaced 1:1 with real images using the same filenames and aspect ratios.
+Suitable for static deployment via Cloudflare Pages or any static host.
