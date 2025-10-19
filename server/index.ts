@@ -20,10 +20,22 @@ function getClientIP(c: any): string {
     return cfIP;
   }
 
+  // In development with Express proxy, use x-forwarded-for set by dev.ts
+  if (process.env.NODE_ENV === "development") {
+    const forwardedFor = c.req.header("x-forwarded-for");
+    if (forwardedFor) {
+      return forwardedFor.split(",")[0].trim();
+    }
+  }
+
   // Use Hono's getConnInfo to get the real socket IP (can't be spoofed)
-  const connInfo = getConnInfo(c);
-  if (connInfo.remote.address) {
-    return connInfo.remote.address;
+  try {
+    const connInfo = getConnInfo(c);
+    if (connInfo.remote.address) {
+      return connInfo.remote.address;
+    }
+  } catch (error) {
+    // getConnInfo may fail in dev mode with proxied requests
   }
 
   // Fallback for local development (all requests will share this key)
@@ -589,12 +601,7 @@ app.get("/api/health", (c) => {
   return c.json({ status: "ok", timestamp: Date.now() });
 });
 
-// Root route - redirect to auth.html
-app.get("/", (c) => {
-  return c.redirect("/public/auth.html");
-});
-
-// Start server with async initialization
+// Start server with async initialization (production mode)
 async function startServer() {
   const port = process.env.PORT || 5000;
 
@@ -612,4 +619,10 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start if not in development mode (dev.ts handles dev mode)
+if (process.env.NODE_ENV !== "development") {
+  startServer();
+}
+
+// Export Hono app for use in dev.ts
+export default app;
