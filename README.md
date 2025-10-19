@@ -1,13 +1,15 @@
 # pix.immo - Real Estate Media Platform
 
-A professional real estate media platform built with Node.js 22 + TypeScript. Features AI-based image captioning (Replicate API), secure authentication, role-based access control, and property photography order management. Designed for Cloudflare Workers deployment with a dual-server development architecture.
+A professional real estate media platform built with Node.js 22 + TypeScript. Features AI-based image captioning (Replicate API), custom session-based authentication (Lucia-compatible), role-based access control, and property photography order management. Designed for Cloudflare Workers deployment with a dual-server development architecture.
+
+> **Authentication**: Custom session implementation using Scrypt password hashing and HTTP-only cookies. Architecture is Lucia-compatible; migration to Lucia Auth library is optional and can be implemented in future phases.
 
 ## 🚧 Current Status
 
 **Task #1 of Technical Briefing: Core Foundation in Progress**
 
 Completed features:
-- ✅ Session-based authentication (cookie sessions)
+- ✅ Custom session-based authentication (Lucia-compatible design)
 - ✅ Role-based access control (admin/client)
 - ✅ Order management system
 - ✅ Password reset flow with secure tokens
@@ -28,10 +30,10 @@ Upcoming tasks:
 - **Backend**: Hono v4 (edge-native web framework)
 - **Frontend**: React 18 + Wouter + Shadcn UI + Tailwind CSS
 - **Database**: PostgreSQL (Neon) + Drizzle ORM
-- **Auth**: Session cookies (primary), JWT/Bearer tokens (optional for API)
+- **Auth**: Custom session cookies (Lucia-compatible) + optional JWT/Bearer tokens for API
 - **Dev Server**: Express + Vite (HMR enabled)
-- **AI**: Replicate API (CogVLM image captioning)
-- **Email**: Mailgun (transactional emails)
+- **AI**: Replicate API (CogVLM image captioning) - planned
+- **Email**: Mailgun (transactional emails) - planned
 - **Deployment**: Cloudflare Workers + Pages
 
 ## System Architecture
