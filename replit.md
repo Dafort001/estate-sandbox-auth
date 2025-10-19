@@ -30,9 +30,12 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
 - **User Roles**: "admin" and "client" with distinct access privileges.
 - **Order Management**: Create new orders, view orders (clients see own, admins see all), view single order, update order status (admin only). Order statuses include pending, confirmed, completed, cancelled.
 - **Rate Limiting**: IP-based rate limiting on authentication endpoints for brute-force protection (e.g., 5 requests/minute for login).
+- **Gallery**: JavaScript-driven masonry layout with absolute positioning for exact 11px spacing (both horizontal and vertical). Features responsive columns (1/2/3/4 based on viewport), progressive image loading with retry mechanism, dark overlay on hover with caption text, and lightbox modal for full-size viewing.
 
 ### System Design Choices
 The architecture is designed for Cloudflare Workers compatibility, leveraging Hono for its edge-native capabilities. The application separates the development server (Express+Vite) from the production server (Hono) to optimize both environments. Security features include Scrypt hashing, HTTP-only cookies, `SameSite=lax`, and secure environment variable management.
+
+**Gallery Implementation**: Uses JavaScript-driven absolute positioning instead of CSS Grid to achieve exact 11px spacing. CSS Grid with row-spanning cannot achieve consistent vertical spacing due to Math.ceil() creating 0-11px slack per image. The JS solution tracks column heights, places each image in the shortest column using `transform: translate(x, y)`, and guarantees both horizontal and vertical gaps are exactly 11px. Includes progressive image loading with error handling, fallback timeout (2s), and retry mechanism (5 retries @ 1s intervals).
 
 ## External Dependencies
 - **Database**: PostgreSQL (specifically Neon for cloud deployment)
