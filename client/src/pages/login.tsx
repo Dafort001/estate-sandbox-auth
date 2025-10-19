@@ -9,7 +9,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Camera } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const loginSchema = z.object({
@@ -64,9 +63,8 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/">
-            <div className="inline-flex items-center gap-2 hover-elevate active-elevate-2 cursor-pointer px-4 py-2 rounded-lg">
-              <Camera className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">pix.immo</span>
+            <div className="inline-flex items-center cursor-pointer">
+              <span className="text-2xl font-semibold tracking-wide">PIX.IMMO</span>
             </div>
           </Link>
         </div>
