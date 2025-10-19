@@ -406,16 +406,17 @@
   position: absolute;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  display: none;
+  display: none !important;
   align-items: center;
   justify-content: center;
   pointer-events: none;
   padding: 1rem;
+  z-index: 10;
 }
 
 .masonry-grid-item:hover .masonry-hover-overlay,
 .masonry-grid-item:focus-within .masonry-hover-overlay {
-  display: flex;
+  display: flex !important;
   animation: fadeIn 200ms ease-in-out;
 }
 
@@ -428,15 +429,15 @@
   }
 }
 
-.masonry-hover-overlay .masonry-hover-text {
-  color: white;
+.masonry-hover-text {
+  color: white !important;
   text-align: center;
-  font-size: 0.875rem;
+  font-size: 0.875rem !important;
   line-height: 1.5;
   font-weight: 500;
   max-width: 100%;
-  overflow: hidden;
-  display: inline-block;
+  word-wrap: break-word;
+  white-space: normal;
 }
 
 /* Respect reduced motion preference */
