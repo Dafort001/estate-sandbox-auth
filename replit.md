@@ -1,30 +1,39 @@
 # pix.immo - Real Estate Media Platform
 
 ## Overview
-A real estate media platform built with Node.js + TypeScript, featuring AI-based image captioning, dual authentication (cookie sessions + JWT tokens), role-based access control, and property photography order management. Uses Hono web framework for Cloudflare Workers compatibility and React SPA for the frontend.
+A professional real estate media platform built with Node.js 22 + TypeScript, featuring AI-based image captioning (Replicate API), dual authentication (Lucia sessions + optional JWT tokens), role-based access control, and property photography order management. Uses Hono web framework for Cloudflare Workers compatibility and React SPA for the frontend.
 
 ## Purpose
-Professional property photography platform connecting real estate professionals with photography services. Features order management, property galleries, and AI-powered image analysis.
+Professional property photography platform connecting real estate professionals with photography services. Features order management, property galleries, and AI-powered image analysis for automated caption generation.
 
 ## Current State
-**Status**: ✅ Core Platform Complete
-- React SPA frontend with Wouter routing (6 pages)
-- Dual server architecture (Express+Vite dev, Hono production)
-- PostgreSQL database with Drizzle ORM
-- Dual authentication (cookie sessions + JWT/Bearer tokens)
-- Role-based access control (admin/client)
-- Order management system for property photography
-- Password reset flow with one-time tokens
-- Rate limiting on all auth endpoints
-- Complete E2E test coverage
+**Status**: 🚧 Core Foundation in Progress (Task #1 of Technical Briefing)
+
+**Completed:**
+- ✅ React SPA frontend with Wouter routing (6 pages)
+- ✅ Dual server architecture (Express+Vite dev, Hono production)
+- ✅ PostgreSQL database with Drizzle ORM
+- ✅ Session-based authentication (cookie sessions)
+- ✅ Role-based access control (admin/client)
+- ✅ Order management system for property photography
+- ✅ Password reset flow with secure token handling
+- ✅ Rate limiting on all auth endpoints
+- ✅ Complete E2E test coverage
+
+**Planned (Later Tasks):**
+- 🔄 AI image captioning via Replicate API
+- 🔄 Mailgun email delivery for password reset
+- 🔄 Image upload and storage
+- 🔄 Advanced admin dashboard
+- 🔄 Property portfolio management
 
 ## Recent Changes
 **2025-10-19 (Phase 7)**: React Frontend & Development Server
 - Created React SPA with 6 pages: Home, Login, Register, Dashboard, Gallery, OrderForm
 - Implemented Wouter routing with proper SPA navigation
 - Created dual server architecture:
-  - server/dev.ts: Express + Vite middleware with HMR for development
-  - server/index.ts: Hono production server (Cloudflare Workers ready)
+  - `server/dev.ts`: Express + Vite middleware with HMR for development
+  - `server/index.ts`: Hono production server (Cloudflare Workers ready)
 - Fixed API proxy in dev.ts to forward requests to Hono app.fetch()
 - Fixed getClientIP to work with proxied requests (x-forwarded-for in dev)
 - All pages use Shadcn components with react-hook-form + zod validation
@@ -49,11 +58,11 @@ Professional property photography platform connecting real estate professionals 
 - Frontend displays user role badge on dashboard
 
 **Earlier Phases**: Authentication Foundation
-- Hono server with dual auth modes (cookie + JWT)
+- Hono server with session-based authentication (cookie sessions)
+- Optional JWT/Bearer token support for API access
 - PostgreSQL database with Drizzle ORM
 - Cookie-based sessions (30-day expiry)
-- JWT/Bearer token auth (15-min access, 7-day refresh)
-- Password reset flow with console logging (Mailgun integration pending)
+- Password reset flow with secure one-time tokens
 - Rate limiting on all auth endpoints (brute-force protection)
 - Scrypt password hashing
 
@@ -61,12 +70,13 @@ Professional property photography platform connecting real estate professionals 
 
 ### Backend (Hono)
 - **Framework**: Hono v4 (Cloudflare Workers compatible)
+- **Runtime**: Node.js 22 (target for Cloudflare compatibility)
 - **Auth Routes**: `/api/signup`, `/api/login`, `/api/logout`, `/api/me`, `/api/token/refresh`
 - **Password Reset**: `/api/password-reset/request`, `/api/password-reset/confirm`
 - **Order Routes**: `/api/orders` (POST/GET), `/api/orders/:id` (GET/PATCH)
 - **Database**: PostgreSQL (Neon) with Drizzle ORM
-- **Auth Methods**: Cookie sessions (30-day) + JWT/Bearer tokens (15-min access, 7-day refresh)
-- **Security**: Scrypt hashing, httpOnly cookies, JWT with token rotation, rate limiting, role-based access
+- **Auth Strategy**: Session cookies (primary), JWT tokens (optional for API access)
+- **Security**: Scrypt hashing, httpOnly cookies, optional JWT with token rotation, rate limiting, role-based access
 
 ### Frontend (React SPA)
 - **Framework**: React 18 + Wouter routing
@@ -78,9 +88,9 @@ Professional property photography platform connecting real estate professionals 
 - **Testing**: data-testid attributes on all interactive elements
 
 ### Development Server
-- **Dev Mode**: Express + Vite middleware with HMR (server/dev.ts)
-- **Production**: Hono serve() with static files (server/index.ts)
-- **API Proxy**: Dev server proxies /api/* to Hono app.fetch()
+- **Dev Mode**: Express + Vite middleware with HMR (`server/dev.ts`)
+- **Production**: Hono serve() with static files (`server/index.ts`)
+- **API Proxy**: Dev server proxies `/api/*` to Hono app.fetch()
 - **Client IP**: Forwarded via x-forwarded-for header for rate limiting
 - **Hot Reload**: Frontend changes trigger instant updates
 
@@ -91,22 +101,25 @@ Professional property photography platform connecting real estate professionals 
 **Session**: `{ id, userId, expiresAt }`
 
 **RefreshToken**: `{ id, userId, token, expiresAt, createdAt }`
+- Optional: Used only when JWT authentication is enabled
 
 **PasswordResetToken**: `{ id, userId, token, expiresAt, createdAt }`
+- One-time use tokens with 1-hour expiry
 
 **Order**: `{ id, userId, propertyName, propertyAddress, contactName, contactPhone, contactEmail, preferredDate, notes, status, createdAt, updatedAt }`
 - Statuses: "pending" | "confirmed" | "completed" | "cancelled"
 
 ## Tech Stack
-- **Runtime**: Node.js 20
-- **Backend**: Hono v4
+- **Runtime**: Node.js 22 (target for Cloudflare Workers compatibility)
+- **Backend**: Hono v4 (Cloudflare Workers native)
 - **Frontend**: React 18 + Wouter + Shadcn UI + Tailwind CSS
 - **Language**: TypeScript 5.6
 - **Database**: PostgreSQL (Neon) + Drizzle ORM
-- **Dev Server**: Express + Vite
-- **Forms**: react-hook-form + zod
+- **Dev Server**: Express + Vite middleware
+- **Auth**: Session cookies (primary), optional JWT for API access
+- **Forms**: react-hook-form + zod validation
 - **Data Fetching**: TanStack Query v5
-- **Password**: Scrypt (Node.js crypto)
+- **Password Hashing**: Scrypt (Node.js crypto)
 
 ## User Preferences
 - Hono for Cloudflare Workers compatibility
@@ -114,6 +127,7 @@ Professional property photography platform connecting real estate professionals 
 - Shadcn components for consistent UI
 - TypeScript for type safety
 - Clean, modern developer-focused interfaces
+- Secure environment variable management (no hardcoded secrets)
 
 ## Running the Project
 
@@ -138,7 +152,7 @@ Syncs Drizzle schema to PostgreSQL database. Use `--force` if data loss warning 
 ### Authentication
 - **POST /api/signup** - Create user + session (default role: client)
 - **POST /api/login** - Authenticate + create session (or JWT with ?token=true)
-- **POST /api/token/refresh** - Refresh access token using refresh token
+- **POST /api/token/refresh** - Refresh access token using refresh token (JWT mode only)
 - **GET /api/me** - Get current user with role (supports cookie and Bearer auth)
 - **POST /api/logout** - Invalidate session
 
@@ -189,11 +203,22 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 
 ## Migration Path to Cloudflare Workers
 
-1. Build React app: `npm run build`
-2. Create D1 database schema (or use Neon PostgreSQL)
-3. Deploy Hono app to Cloudflare Workers
-4. Serve static files from Workers
-5. Routes remain unchanged ✨
+The application is designed for seamless deployment to Cloudflare Workers:
+
+1. **Build React app**: `npm run build` (generates static assets)
+2. **Database**: Use Neon PostgreSQL (Workers-compatible) or migrate to D1
+3. **Static Files**: Serve from Workers Static Assets or R2
+4. **Hono App**: Deploy `server/index.ts` to Workers (already compatible)
+5. **Environment Variables**: Set in Workers dashboard
+6. **Routes**: No changes needed - all routes are Workers-compatible ✨
+
+### Why This Architecture Works
+
+- **Hono Framework**: Built specifically for edge runtimes (Workers, Deno, Bun)
+- **No Node.js APIs in Routes**: All route handlers use standard Web APIs
+- **Modular Storage**: Storage interface can swap to D1 or other Workers-compatible stores
+- **Static Assets**: React build outputs standard static files
+- **Session Management**: Can use Workers KV or external session store
 
 ## Key Files
 
@@ -201,7 +226,7 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 - `server/dev.ts` - Express + Vite development server with API proxy
 - `server/index.ts` - Hono production server (Cloudflare Workers ready)
 - `server/auth.ts` - Password hashing & session config
-- `server/jwt.ts` - JWT utilities (access & refresh tokens)
+- `server/jwt.ts` - JWT utilities (optional, for API access tokens)
 - `server/storage.ts` - Storage interface + DatabaseStorage implementation
 - `server/db.ts` - Drizzle database connection
 - `shared/schema.ts` - Drizzle schema, types, and validation
@@ -221,11 +246,47 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 
 ## Environment Variables
 
-- `PORT` - Server port (default: 5000)
-- `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit)
-- `JWT_SECRET` - Secret key for JWT signing (required for JWT auth)
-- `SESSION_SECRET` - Secret key for session cookies
+All secrets and API keys are managed securely via environment variables. **Never hardcode secrets in source code.**
+
+### Required Environment Variables
+
+**Database:**
+- `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit, or manually configure)
+- `PGHOST`, `PGPORT`, `PGUSER`, `PGPASSWORD`, `PGDATABASE` - Individual PostgreSQL credentials
+
+**Authentication:**
+- `SESSION_SECRET` - Secret key for session cookies (required)
+- `JWT_SECRET` - Secret key for JWT signing (required if using JWT auth mode)
+
+**Email (Mailgun):**
+- `MAILGUN_API_KEY` - Mailgun API key for sending emails (required for password reset emails)
+- `MAILGUN_DOMAIN` - Mailgun domain for sending emails (e.g., mg.yourdomain.com)
+
+**AI Services (Future):**
+- `REPLICATE_API_TOKEN` - Replicate API token for AI image captioning (required for AI features)
+
+**Runtime:**
 - `NODE_ENV` - Environment mode (development/production)
+- `PORT` - Server port (default: 5000)
+
+### Setting Environment Variables
+
+**Development (Replit):**
+Use the Secrets tab in Replit to securely store all environment variables. The application will prompt for missing required secrets.
+
+**Production (Cloudflare Workers):**
+Set environment variables in the Cloudflare Workers dashboard under Settings → Variables and Secrets.
+
+**Local Development:**
+Create a `.env` file (never commit to git):
+```bash
+DATABASE_URL=postgresql://user:password@host:port/database
+SESSION_SECRET=your-session-secret-here
+JWT_SECRET=your-jwt-secret-here
+MAILGUN_API_KEY=your-mailgun-key-here
+MAILGUN_DOMAIN=mg.yourdomain.com
+REPLICATE_API_TOKEN=your-replicate-token-here
+```
 
 ## Security Configuration
 
@@ -237,11 +298,18 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 - **Password Hash**: Scrypt (N=16384, r=8, p=1, keylen=64)
 - **Rate Limiting**: IP-based (x-forwarded-for in dev, cf-connecting-ip in production)
 
-## Next Steps
+## Next Steps (Technical Briefing Roadmap)
 
-1. **Dashboard Enhancements** - Add upload overview, recent orders, quick actions
-2. **Gallery with Real Assets** - Replace placeholder images with actual property photos
-3. **Mailgun Integration** - Replace console logging with email delivery for password reset
-4. **Admin Panel** - Build admin dashboard for order management
-5. **Image Upload** - Add property photo upload functionality
-6. **AI Captioning** - Integrate AI-based image captioning for property photos
+1. **Task #2: AI Image Captioning** - Integrate Replicate API for automated property photo captions
+2. **Task #3: Email Integration** - Replace console logging with Mailgun email delivery for password reset
+3. **Task #4: Image Upload System** - Add property photo upload and storage (Cloudflare R2 or similar)
+4. **Task #5: Admin Dashboard** - Build comprehensive admin panel for order and user management
+5. **Task #6: Portfolio Management** - Enable users to create and manage property portfolios
+6. **Task #7: Production Deployment** - Deploy to Cloudflare Workers with optimized asset delivery
+
+## Notes
+
+- **Authentication Strategy**: Currently using session cookies as primary auth method. JWT support is available for API-only access but is optional.
+- **AI Captioning**: Replicate API integration is planned for a later task. Current gallery shows placeholder images.
+- **Email Delivery**: Password reset currently logs to console. Mailgun integration will be added in a future task.
+- **Cloudflare Workers**: The architecture is designed from the ground up for Workers deployment. All components (Hono, Drizzle, React SPA) are Workers-compatible.
