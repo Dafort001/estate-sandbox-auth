@@ -1,100 +1,119 @@
-# Auth Development Sandbox
+# pix.immo - Real Estate Media Platform
 
 ## Overview
-A Node.js + TypeScript authentication sandbox built with Hono web framework. Features PostgreSQL database with Drizzle ORM, dual authentication (cookie sessions + JWT/Bearer tokens), and a beautiful testing interface. Production-ready with password reset and rate limiting capabilities.
+A real estate media platform built with Node.js + TypeScript, featuring AI-based image captioning, dual authentication (cookie sessions + JWT tokens), role-based access control, and property photography order management. Uses Hono web framework for Cloudflare Workers compatibility and React SPA for the frontend.
 
 ## Purpose
-Development sandbox for real-estate website authentication flows. Provides complete auth system with database persistence, supporting both traditional cookie sessions and modern JWT-based authentication.
+Professional property photography platform connecting real estate professionals with photography services. Features order management, property galleries, and AI-powered image analysis.
 
 ## Current State
-**Status**: ✅ Production-Ready Auth Sandbox
+**Status**: ✅ Core Platform Complete
+- React SPA frontend with Wouter routing (6 pages)
+- Dual server architecture (Express+Vite dev, Hono production)
+- PostgreSQL database with Drizzle ORM
+- Dual authentication (cookie sessions + JWT/Bearer tokens)
+- Role-based access control (admin/client)
+- Order management system for property photography
+- Password reset flow with one-time tokens
+- Rate limiting on all auth endpoints
+- Complete E2E test coverage
+
+## Recent Changes
+**2025-10-19 (Phase 7)**: React Frontend & Development Server
+- Created React SPA with 6 pages: Home, Login, Register, Dashboard, Gallery, OrderForm
+- Implemented Wouter routing with proper SPA navigation
+- Created dual server architecture:
+  - server/dev.ts: Express + Vite middleware with HMR for development
+  - server/index.ts: Hono production server (Cloudflare Workers ready)
+- Fixed API proxy in dev.ts to forward requests to Hono app.fetch()
+- Fixed getClientIP to work with proxied requests (x-forwarded-for in dev)
+- All pages use Shadcn components with react-hook-form + zod validation
+- Added data-testid attributes for testing
+- E2E tests passing: complete user flow (register → order → dashboard → gallery → logout/login)
+
+**2025-10-19 (Phase 6)**: Order Management System
+- Added orders table with property photography request fields
+- Implemented order API with role-based authorization:
+  - POST /api/orders: Create order (authenticated users)
+  - GET /api/orders: Get orders (clients see own, admins see all)
+  - GET /api/orders/:id: Get single order with authorization check
+  - PATCH /api/orders/:id/status: Update order status (admin only)
+- Order statuses: pending, confirmed, completed, cancelled
+- Complete integration with frontend dashboard and order form
+
+**2025-10-19 (Phase 5)**: Role-Based Access Control
+- Extended users table with role field (admin/client)
+- Default role: "client" for new signups
+- Role propagated through signup, login, and /api/me endpoints
+- Authorization middleware for admin-only endpoints
+- Frontend displays user role badge on dashboard
+
+**Earlier Phases**: Authentication Foundation
 - Hono server with dual auth modes (cookie + JWT)
 - PostgreSQL database with Drizzle ORM
 - Cookie-based sessions (30-day expiry)
 - JWT/Bearer token auth (15-min access, 7-day refresh)
-- Password reset flow with one-time tokens
+- Password reset flow with console logging (Mailgun integration pending)
 - Rate limiting on all auth endpoints (brute-force protection)
 - Scrypt password hashing
-- Beautiful HTML test interface with dark/light mode
-- Complete type safety with TypeScript
-
-## Recent Changes
-**2025-10-17 (Phase 5)**: Rate Limiting (Security Hardened)
-- Installed hono-rate-limiter middleware
-- Configured rate limits: 5 login/min, 3 signup/min, 10 password reset/hour
-- Fixed security vulnerability: uses getConnInfo for real socket IP (can't be spoofed)
-- Applied rate limiters to all sensitive endpoints
-- Added draft-6 standard headers (RateLimit-Limit, RateLimit-Remaining)
-- Cloudflare Workers compatible (trusts cf-connecting-ip in production only)
-- All e2e tests passing (including header spoofing prevention)
-
-**2025-10-17 (Phase 4)**: Password Reset Flow
-- Added password_reset_tokens table with cascade delete
-- Created POST /api/password-reset/request (generates 1-hour token)
-- Created POST /api/password-reset/confirm (validates & resets)
-- One-time use tokens (deleted after successful reset)
-- Invalidates all sessions and refresh tokens on reset (security)
-- Console logging for dev (production needs email integration)
-- Timing-safe implementation (doesn't reveal email existence)
-- All e2e tests passing
-
-**2025-10-17 (Phase 3)**: JWT/Bearer Token Authentication
-- Added refresh_tokens table for secure token storage
-- Implemented JWT utilities with required secret validation
-- Extended login endpoint to support ?token=true for JWT mode
-- Created /api/token/refresh endpoint with token rotation
-- Added Bearer token middleware alongside cookie auth
-- Both auth methods work independently (backward compatible)
-- All e2e tests passing
-
-**2025-10-17 (Phase 2)**: PostgreSQL Migration
-- Migrated from in-memory storage to PostgreSQL database
-- Added Drizzle ORM schema with users and sessions tables
-- Created DatabaseStorage adapter implementing IStorage interface
-- Fixed case-insensitive email lookups
-- All routes work unchanged (same interface)
-
-**2025-10-17 (Phase 1)**: Initial implementation
-- Created Hono-based auth server (replacing Express)
-- Implemented custom authentication (Lucia v3 was deprecated)
-- Built storage layer with flexible IStorage interface
-- Created beautiful auth.html test interface
-- Added scrypt password hashing
-- Configured cookie-based sessions (httpOnly, sameSite=lax)
 
 ## Project Architecture
 
 ### Backend (Hono)
-- **Framework**: Hono (Cloudflare Workers compatible)
+- **Framework**: Hono v4 (Cloudflare Workers compatible)
 - **Auth Routes**: `/api/signup`, `/api/login`, `/api/logout`, `/api/me`, `/api/token/refresh`
 - **Password Reset**: `/api/password-reset/request`, `/api/password-reset/confirm`
+- **Order Routes**: `/api/orders` (POST/GET), `/api/orders/:id` (GET/PATCH)
 - **Database**: PostgreSQL (Neon) with Drizzle ORM
 - **Auth Methods**: Cookie sessions (30-day) + JWT/Bearer tokens (15-min access, 7-day refresh)
-- **Security**: Scrypt hashing, httpOnly cookies, JWT with token rotation, rate limiting, CSRF protection
+- **Security**: Scrypt hashing, httpOnly cookies, JWT with token rotation, rate limiting, role-based access
 
-### Frontend
-- **Interface**: Vanilla HTML/CSS/JS (`public/auth.html`)
-- **Features**: Dark/light mode, real-time session status, JSON viewer
-- **Design**: Clean developer-focused UI following Material Design principles
+### Frontend (React SPA)
+- **Framework**: React 18 + Wouter routing
+- **Pages**: Home, Login, Register, Dashboard, Gallery, OrderForm, NotFound
+- **Components**: Shadcn UI with Tailwind CSS
+- **Forms**: react-hook-form + zod validation
+- **Data Fetching**: TanStack Query (React Query v5)
+- **Design**: Modern, responsive, dark/light mode support
+- **Testing**: data-testid attributes on all interactive elements
+
+### Development Server
+- **Dev Mode**: Express + Vite middleware with HMR (server/dev.ts)
+- **Production**: Hono serve() with static files (server/index.ts)
+- **API Proxy**: Dev server proxies /api/* to Hono app.fetch()
+- **Client IP**: Forwarded via x-forwarded-for header for rate limiting
+- **Hot Reload**: Frontend changes trigger instant updates
 
 ### Data Models
-**User**: `{ id, email, hashedPassword, createdAt }`
+**User**: `{ id, email, hashedPassword, role, createdAt }`
+- Roles: "admin" | "client"
+
 **Session**: `{ id, userId, expiresAt }`
+
 **RefreshToken**: `{ id, userId, token, expiresAt, createdAt }`
+
 **PasswordResetToken**: `{ id, userId, token, expiresAt, createdAt }`
+
+**Order**: `{ id, userId, propertyName, propertyAddress, contactName, contactPhone, contactEmail, preferredDate, notes, status, createdAt, updatedAt }`
+- Statuses: "pending" | "confirmed" | "completed" | "cancelled"
 
 ## Tech Stack
 - **Runtime**: Node.js 20
-- **Framework**: Hono v4
+- **Backend**: Hono v4
+- **Frontend**: React 18 + Wouter + Shadcn UI + Tailwind CSS
 - **Language**: TypeScript 5.6
 - **Database**: PostgreSQL (Neon) + Drizzle ORM
+- **Dev Server**: Express + Vite
+- **Forms**: react-hook-form + zod
+- **Data Fetching**: TanStack Query v5
 - **Password**: Scrypt (Node.js crypto)
 
 ## User Preferences
-- Wants Hono for Cloudflare Workers compatibility
-- Prefers in-memory storage for development
-- Desires easy migration path to Cloudflare D1
-- Values clean, functional developer interfaces
+- Hono for Cloudflare Workers compatibility
+- React SPA with Wouter routing
+- Shadcn components for consistent UI
+- TypeScript for type safety
+- Clean, modern developer-focused interfaces
 
 ## Running the Project
 
@@ -102,38 +121,54 @@ Development sandbox for real-estate website authentication flows. Provides compl
 ```bash
 npm run dev
 ```
-Server: http://localhost:5000
-Interface: http://localhost:5000/public/auth.html
+- Server: http://localhost:5000
+- React App: http://localhost:5000/ (with HMR)
+- Auth Sandbox: http://localhost:5000/public/auth.html
+- Hot Module Replacement enabled
+- API proxy to Hono backend
 
 ### Database Migration
 ```bash
 npm run db:push
 ```
-Syncs Drizzle schema to PostgreSQL database
+Syncs Drizzle schema to PostgreSQL database. Use `--force` if data loss warning appears.
 
 ## API Endpoints
 
-**POST /api/signup** - Create user + session
-**POST /api/login** - Authenticate + create session (or JWT with ?token=true)
-**POST /api/token/refresh** - Refresh access token using refresh token
-**GET /api/me** - Get current user (supports both cookie and Bearer auth)
-**POST /api/logout** - Invalidate session
-**POST /api/password-reset/request** - Request password reset token
-**POST /api/password-reset/confirm** - Confirm password reset with token
-**GET /api/health** - Health check
+### Authentication
+- **POST /api/signup** - Create user + session (default role: client)
+- **POST /api/login** - Authenticate + create session (or JWT with ?token=true)
+- **POST /api/token/refresh** - Refresh access token using refresh token
+- **GET /api/me** - Get current user with role (supports cookie and Bearer auth)
+- **POST /api/logout** - Invalidate session
 
-### JWT Authentication
-- Login with tokens: `POST /api/login?token=true` → Returns `{accessToken, refreshToken}`
-- Use Bearer token: `Authorization: Bearer <access_token>`
-- Refresh tokens: `POST /api/token/refresh` with `{refreshToken}` → New token pair
+### Password Reset
+- **POST /api/password-reset/request** - Request password reset token
+- **POST /api/password-reset/confirm** - Confirm password reset with token
 
-### Password Reset Flow
-- Request reset: `POST /api/password-reset/request` with `{email}` → Generates 1-hour token
-- Confirm reset: `POST /api/password-reset/confirm` with `{token, newPassword}` → Resets password
-- One-time use tokens (deleted after successful reset)
-- Invalidates all sessions and refresh tokens on password change
+### Orders
+- **POST /api/orders** - Create property photography order (authenticated)
+- **GET /api/orders** - Get orders (clients: own orders, admins: all orders)
+- **GET /api/orders/:id** - Get single order (authorization check)
+- **PATCH /api/orders/:id/status** - Update order status (admin only)
 
-### Rate Limiting
+### Health Check
+- **GET /api/health** - Health check
+
+## Authorization Rules
+
+### Client Role
+- Can create orders
+- Can view own orders only
+- Cannot update order status
+- Default role for new signups
+
+### Admin Role
+- Can view all orders
+- Can update order status
+- Full system access
+
+## Rate Limiting
 All auth endpoints are rate-limited to prevent brute-force attacks:
 - **Login**: 5 requests/minute per IP
 - **Signup**: 3 requests/minute per IP
@@ -142,23 +177,47 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 - Returns `429 Too Many Requests` when limit exceeded
 - Includes `RateLimit-*` headers (draft-6 standard)
 
+## Frontend Routes
+
+- `/` - Home page (landing)
+- `/login` - Login form
+- `/register` - Registration form
+- `/dashboard` - User dashboard with orders list
+- `/gallery` - Property gallery (placeholder images)
+- `/order` - Order creation form
+- `*` - NotFound page (404)
+
 ## Migration Path to Cloudflare Workers
 
-1. Create D1 database schema
-2. Implement D1 storage adapter (same `IStorage` interface)
-3. Update `server/storage.ts` to use D1
-4. Deploy to Cloudflare Workers
+1. Build React app: `npm run build`
+2. Create D1 database schema (or use Neon PostgreSQL)
+3. Deploy Hono app to Cloudflare Workers
+4. Serve static files from Workers
 5. Routes remain unchanged ✨
 
 ## Key Files
 
-- `server/index.ts` - Hono server with all routes
+### Backend
+- `server/dev.ts` - Express + Vite development server with API proxy
+- `server/index.ts` - Hono production server (Cloudflare Workers ready)
 - `server/auth.ts` - Password hashing & session config
 - `server/jwt.ts` - JWT utilities (access & refresh tokens)
 - `server/storage.ts` - Storage interface + DatabaseStorage implementation
 - `server/db.ts` - Drizzle database connection
 - `shared/schema.ts` - Drizzle schema, types, and validation
-- `public/auth.html` - Test interface
+
+### Frontend
+- `client/src/App.tsx` - Router configuration with Wouter
+- `client/src/pages/home.tsx` - Landing page
+- `client/src/pages/login.tsx` - Login form
+- `client/src/pages/register.tsx` - Registration form
+- `client/src/pages/dashboard.tsx` - User dashboard with orders
+- `client/src/pages/gallery.tsx` - Property gallery
+- `client/src/pages/order-form.tsx` - Order creation form
+- `client/src/lib/queryClient.ts` - TanStack Query configuration
+
+### Legacy
+- `public/auth.html` - Original auth sandbox test interface (still functional)
 
 ## Environment Variables
 
@@ -166,7 +225,7 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 - `DATABASE_URL` - PostgreSQL connection string (auto-set by Replit)
 - `JWT_SECRET` - Secret key for JWT signing (required for JWT auth)
 - `SESSION_SECRET` - Secret key for session cookies
-- `NODE_ENV` - Environment mode
+- `NODE_ENV` - Environment mode (development/production)
 
 ## Security Configuration
 
@@ -176,3 +235,13 @@ All auth endpoints are rate-limited to prevent brute-force attacks:
 - **Secure**: false (dev), true (production)
 - **Expiration**: 30 days
 - **Password Hash**: Scrypt (N=16384, r=8, p=1, keylen=64)
+- **Rate Limiting**: IP-based (x-forwarded-for in dev, cf-connecting-ip in production)
+
+## Next Steps
+
+1. **Dashboard Enhancements** - Add upload overview, recent orders, quick actions
+2. **Gallery with Real Assets** - Replace placeholder images with actual property photos
+3. **Mailgun Integration** - Replace console logging with email delivery for password reset
+4. **Admin Panel** - Build admin dashboard for order management
+5. **Image Upload** - Add property photo upload functionality
+6. **AI Captioning** - Integrate AI-based image captioning for property photos
