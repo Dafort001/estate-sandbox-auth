@@ -412,12 +412,25 @@
   pointer-events: none;
   padding: 1rem;
   z-index: 10;
+  visibility: hidden !important;
+}
+
+.masonry-hover-overlay * {
+  display: none !important;
+  visibility: hidden !important;
 }
 
 .masonry-grid-item:hover .masonry-hover-overlay,
 .masonry-grid-item:focus-within .masonry-hover-overlay {
   display: flex !important;
+  visibility: visible !important;
   animation: fadeIn 200ms ease-in-out;
+}
+
+.masonry-grid-item:hover .masonry-hover-overlay *,
+.masonry-grid-item:focus-within .masonry-hover-overlay * {
+  display: inline-block !important;
+  visibility: visible !important;
 }
 
 @keyframes fadeIn {
