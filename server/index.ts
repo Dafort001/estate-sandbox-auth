@@ -4,7 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
-import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, type UserResponse } from "@shared/schema";
+import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, createOrderSchema, type UserResponse } from "@shared/schema";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { generateTokenPair, verifyAccessToken, extractBearerToken } from "./jwt";
 import { randomUUID } from "crypto";
@@ -460,6 +460,126 @@ app.post("/api/password-reset/confirm", passwordResetLimiter, async (c) => {
     });
   } catch (error) {
     console.error("Password reset confirm error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/orders - Create new order (authenticated users only)
+app.post("/api/orders", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const validation = createOrderSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const order = await storage.createOrder(authUser.user.id, validation.data);
+
+    return c.json({ order }, 201);
+  } catch (error) {
+    console.error("Create order error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/orders - Get orders (role-based: admins get all, clients get their own)
+app.get("/api/orders", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    let orders;
+    
+    if (authUser.user.role === "admin") {
+      // Admins see all orders
+      orders = await storage.getAllOrders();
+    } else {
+      // Clients see only their own orders
+      orders = await storage.getUserOrders(authUser.user.id);
+    }
+
+    return c.json({ orders });
+  } catch (error) {
+    console.error("Get orders error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/orders/:id - Get single order (owner or admin only)
+app.get("/api/orders/:id", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const orderId = c.req.param("id");
+    const order = await storage.getOrder(orderId);
+
+    if (!order) {
+      return c.json({ error: "Order not found" }, 404);
+    }
+
+    // Check authorization: must be order owner or admin
+    if (order.userId !== authUser.user.id && authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: You can only view your own orders" }, 403);
+    }
+
+    return c.json({ order });
+  } catch (error) {
+    console.error("Get order error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// PATCH /api/orders/:id/status - Update order status (admin only)
+app.patch("/api/orders/:id/status", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    // Only admins can update order status
+    if (authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const orderId = c.req.param("id");
+    const body = await c.req.json();
+    const { status } = body;
+
+    // Validate status
+    const validStatuses = ["pending", "confirmed", "completed", "cancelled"];
+    if (!status || !validStatuses.includes(status)) {
+      return c.json({ error: "Invalid status. Must be one of: pending, confirmed, completed, cancelled" }, 400);
+    }
+
+    const order = await storage.getOrder(orderId);
+    if (!order) {
+      return c.json({ error: "Order not found" }, 404);
+    }
+
+    const updatedOrder = await storage.updateOrderStatus(orderId, status);
+
+    return c.json({ order: updatedOrder });
+  } catch (error) {
+    console.error("Update order status error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });
