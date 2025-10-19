@@ -139,7 +139,7 @@ export default function Gallery() {
                 data-testid={`img-${image.id}`}
               />
               <div className="masonry-hover-overlay" aria-hidden="true">
-                <span className="masonry-hover-text">
+                <span className="masonry-hover-text text-white">
                   {image.alt}
                 </span>
               </div>

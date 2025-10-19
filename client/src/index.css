@@ -358,7 +358,7 @@
 .masonry-grid {
   display: grid;
   grid-auto-rows: 10px;
-  grid-gap: 16px;
+  grid-gap: 11px;
 }
 
 /* Responsive grid columns */
@@ -406,26 +406,37 @@
   position: absolute;
   inset: 0;
   background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity 200ms ease-in-out;
   pointer-events: none;
   padding: 1rem;
 }
 
 .masonry-grid-item:hover .masonry-hover-overlay,
 .masonry-grid-item:focus-within .masonry-hover-overlay {
-  opacity: 1;
+  display: flex;
+  animation: fadeIn 200ms ease-in-out;
 }
 
-.masonry-hover-text {
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.masonry-hover-overlay .masonry-hover-text {
   color: white;
   text-align: center;
   font-size: 0.875rem;
   line-height: 1.5;
   font-weight: 500;
+  max-width: 100%;
+  overflow: hidden;
+  display: inline-block;
 }
 
 /* Respect reduced motion preference */
