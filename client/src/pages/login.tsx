@@ -12,8 +12,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(1, "Password is required"),
+  email: z.string().email("Ungültige E-Mail-Adresse"),
+  password: z.string().min(1, "Passwort erforderlich"),
 });
 
 type LoginData = z.infer<typeof loginSchema>;
@@ -39,15 +39,15 @@ export default function Login() {
     },
     onSuccess: () => {
       toast({
-        title: "Login successful",
-        description: "Welcome back!",
+        title: "Anmeldung erfolgreich",
+        description: "Willkommen zurück!",
       });
       setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
-        title: "Login failed",
+        title: "Anmeldung fehlgeschlagen",
         description: error.message,
       });
       setIsLoading(false);
@@ -71,8 +71,8 @@ export default function Login() {
 
         <Card>
           <CardHeader>
-            <CardTitle>Welcome Back</CardTitle>
-            <CardDescription>Sign in to your account to continue</CardDescription>
+            <CardTitle>Willkommen zurück</CardTitle>
+            <CardDescription>Melden Sie sich an, um fortzufahren</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -82,11 +82,11 @@ export default function Login() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>E-Mail</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="you@example.com"
+                          placeholder="ihre@email.de"
                           data-testid="input-email"
                           {...field}
                         />
@@ -101,11 +101,11 @@ export default function Login() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>Passwort</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Enter your password"
+                          placeholder="Ihr Passwort"
                           data-testid="input-password"
                           {...field}
                         />
@@ -121,16 +121,16 @@ export default function Login() {
                   disabled={isLoading}
                   data-testid="button-login"
                 >
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? "Anmeldung läuft..." : "Anmelden"}
                 </Button>
               </form>
             </Form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Don't have an account? </span>
+              <span className="text-muted-foreground">Noch kein Konto? </span>
               <Link href="/register">
                 <span className="font-medium text-primary hover:underline cursor-pointer" data-testid="link-register">
-                  Sign up
+                  Registrieren
                 </span>
               </Link>
             </div>
