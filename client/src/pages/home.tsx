@@ -30,9 +30,9 @@ export default function Home() {
   }, [isMenuOpen]);
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md flex-shrink-0">
         <div className="flex items-center justify-between px-[5vw] py-4">
           <div className="text-base font-semibold tracking-wide" data-testid="brand-logo">
             PIX.IMMO
@@ -45,34 +45,24 @@ export default function Home() {
             data-testid="button-menu-open"
           >
             <Menu className="h-5 w-5" />
-            <span className="text-sm text-gray-500">Menü</span>
           </button>
         </div>
       </header>
 
-      {/* Generous whitespace */}
-      <div className="h-[35vh]" aria-hidden="true" />
+      {/* Main content area - fills remaining space, pushes image strip to bottom */}
+      <div className="flex-1 flex flex-col min-h-[calc(100vh-4rem)]">
+        {/* Spacer to push content down */}
+        <div className="flex-1" aria-hidden="true" />
+        
+        {/* Hero Section - Just subtitle, no large title */}
+        <section className="px-[5vw]">
+          <p className="text-lg md:text-xl text-gray-600 tracking-wide mb-10" data-testid="hero-subtitle" style={{ marginTop: '35px' }}>
+            Corporate real estate photography
+          </p>
+        </section>
 
-      {/* Hero Section */}
-      <section className="px-[5vw] mb-8">
-        <div className="grid md:grid-cols-2 gap-8">
-          {/* Left: Hero text */}
-          <div className="flex flex-col justify-center">
-            <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold tracking-tight mb-6" data-testid="hero-title">
-              PIX.IMMO
-            </h1>
-            <p className="text-xl md:text-2xl text-gray-600 tracking-wide" data-testid="hero-subtitle">
-              Corporate real estate photography
-            </p>
-          </div>
-
-          {/* Right: Empty (whitespace) */}
-          <div aria-hidden="true" />
-        </div>
-      </section>
-
-      {/* Navigation Links (plain text buttons) */}
-      <nav className="flex items-center gap-6 px-[5vw] py-4 mb-8" aria-label="Hauptnavigation">
+        {/* Navigation Links (plain text buttons) - 11px above image strip */}
+        <nav className="flex items-center gap-6 px-[5vw] py-4 mb-[11px]" aria-label="Hauptnavigation">
         <Link href="/gallery">
           <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-portfolio">Portfolio</span>
         </Link>
@@ -85,10 +75,10 @@ export default function Home() {
         <Link href="/login">
           <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-login">Login</span>
         </Link>
-      </nav>
+        </nav>
 
-      {/* Horizontal Image Strip */}
-      <div className="overflow-hidden bg-gray-100 h-[48vh] min-h-[300px] max-h-[620px]" data-testid="image-strip-container">
+        {/* Horizontal Image Strip */}
+        <div className="overflow-hidden bg-gray-100 h-[48vh] min-h-[300px] max-h-[620px]" data-testid="image-strip-container">
         <div
           ref={stripRef}
           className="flex gap-[11px] h-full image-strip"
@@ -173,12 +163,10 @@ export default function Home() {
           </div>
         </div>
       </div>
+      </div>
 
-      {/* Whitespace after strip */}
-      <div className="h-[40vh]" aria-hidden="true" />
-
-      {/* Footer */}
-      <footer className="py-6 border-t border-gray-200">
+      {/* Footer - appears after scrolling */}
+      <footer className="py-6 border-t border-gray-200 flex-shrink-0">
         <div className="flex justify-center items-center gap-6 px-[5vw] text-xs text-gray-500">
           <a href="#impressum" className="hover:underline" data-testid="link-impressum">
             Impressum
@@ -195,19 +183,18 @@ export default function Home() {
       {/* Hamburger Menu Drawer */}
       {isMenuOpen && (
         <aside
-          className="fixed inset-0 z-50 bg-white/98 backdrop-blur-sm"
+          className="fixed inset-0 z-50 bg-white/98"
           aria-hidden={!isMenuOpen}
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsMenuOpen(false);
           }}
           data-testid="menu-drawer"
         >
-          <div className="max-w-2xl mx-auto px-[5vw] py-6">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-lg font-semibold">Menü</h3>
+          <div className="absolute top-16 right-[5vw] bg-white shadow-lg rounded-lg p-6 min-w-[200px]">
+            <div className="flex items-center justify-end mb-6">
               <button
                 onClick={() => setIsMenuOpen(false)}
-                className="px-4 py-2 rounded-lg border border-gray-200 bg-white hover:bg-gray-50"
+                className="hover:opacity-70"
                 aria-label="Menü schließen"
                 data-testid="button-menu-close"
               >
