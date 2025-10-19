@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Camera, Plus, LogOut, Image as ImageIcon, ListOrdered } from "lucide-react";
+import { Plus, LogOut, Image as ImageIcon, ListOrdered } from "lucide-react";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -53,8 +53,8 @@ export default function Dashboard() {
     onSuccess: () => {
       queryClient.clear();
       toast({
-        title: "Logged out",
-        description: "See you next time!",
+        title: "Abgemeldet",
+        description: "Bis bald!",
       });
       setLocation("/");
     },
@@ -104,21 +104,35 @@ export default function Dashboard() {
     }
   };
 
+  const getStatusLabel = (status: Order["status"]) => {
+    switch (status) {
+      case "pending":
+        return "ausstehend";
+      case "confirmed":
+        return "bestätigt";
+      case "completed":
+        return "abgeschlossen";
+      case "cancelled":
+        return "storniert";
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="min-h-screen bg-muted/30">
-      <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">
-        <div className="container mx-auto flex h-16 items-center justify-between px-6">
+      <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md">
+        <div className="flex items-center justify-between px-[5vw] py-4">
           <Link href="/">
-            <div className="flex items-center gap-2 hover-elevate active-elevate-2 cursor-pointer px-3 py-2 rounded-lg">
-              <Camera className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">pix.immo</span>
+            <div className="text-base font-semibold tracking-wide cursor-pointer" data-testid="brand-logo">
+              PIX.IMMO
             </div>
           </Link>
           <div className="flex items-center gap-4">
             <Link href="/gallery">
               <Button variant="ghost" data-testid="button-gallery">
                 <ImageIcon className="mr-2 h-4 w-4" />
-                Gallery
+                Galerie
               </Button>
             </Link>
             <Button
@@ -127,7 +141,7 @@ export default function Dashboard() {
               data-testid="button-logout"
             >
               <LogOut className="mr-2 h-4 w-4" />
-              Logout
+              Abmelden
             </Button>
           </div>
         </div>
@@ -137,19 +151,19 @@ export default function Dashboard() {
         <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <div>
             <h1 className="mb-2 text-3xl font-bold" data-testid="text-welcome">
-              Welcome back, {user.email}
+              Willkommen zurück, {user.email}
             </h1>
             <div className="flex items-center gap-2">
-              <p className="text-muted-foreground">Your Dashboard</p>
+              <p className="text-muted-foreground">Ihr Dashboard</p>
               <Badge variant="outline" data-testid="badge-role">
-                {user.role === "admin" ? "Admin" : "Client"}
+                {user.role === "admin" ? "Admin" : "Kunde"}
               </Badge>
             </div>
           </div>
           <Link href="/order">
             <Button size="lg" data-testid="button-new-order">
               <Plus className="mr-2 h-5 w-5" />
-              New Order
+              Neuer Auftrag
             </Button>
           </Link>
         </div>
@@ -158,7 +172,7 @@ export default function Dashboard() {
           <div className="flex items-center gap-2 mb-6">
             <ListOrdered className="h-5 w-5 text-primary" />
             <h2 className="text-2xl font-semibold">
-              {user.role === "admin" ? "All Orders" : "Your Orders"}
+              {user.role === "admin" ? "Alle Aufträge" : "Ihre Aufträge"}
             </h2>
           </div>
 
@@ -172,14 +186,14 @@ export default function Dashboard() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16">
                 <ListOrdered className="mb-4 h-16 w-16 text-muted-foreground" />
-                <h3 className="mb-2 text-xl font-semibold">No orders yet</h3>
+                <h3 className="mb-2 text-xl font-semibold">Noch keine Aufträge</h3>
                 <p className="mb-6 text-center text-muted-foreground">
-                  Start by creating your first property photography order
+                  Erstellen Sie Ihren ersten Auftrag für Immobilienfotografie
                 </p>
                 <Link href="/order">
                   <Button data-testid="button-create-first-order">
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Your First Order
+                    Ersten Auftrag erstellen
                   </Button>
                 </Link>
               </CardContent>
@@ -200,27 +214,27 @@ export default function Dashboard() {
                         variant={getStatusBadgeVariant(order.status)}
                         data-testid={`badge-status-${order.id}`}
                       >
-                        {order.status}
+                        {getStatusLabel(order.status)}
                       </Badge>
                     </div>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-2 text-sm">
                       <div>
-                        <span className="text-muted-foreground">Contact: </span>
+                        <span className="text-muted-foreground">Kontakt: </span>
                         <span>{order.contactName}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Phone: </span>
+                        <span className="text-muted-foreground">Telefon: </span>
                         <span>{order.contactPhone}</span>
                       </div>
                       <div>
-                        <span className="text-muted-foreground">Date: </span>
+                        <span className="text-muted-foreground">Datum: </span>
                         <span>{order.preferredDate}</span>
                       </div>
                       {order.notes && (
                         <div className="pt-2 border-t">
-                          <span className="text-muted-foreground">Notes: </span>
+                          <span className="text-muted-foreground">Notizen: </span>
                           <p className="mt-1 text-xs line-clamp-2">{order.notes}</p>
                         </div>
                       )}

@@ -9,15 +9,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { Camera } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 
 const registerSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(8, "Password must be at least 8 characters"),
+  email: z.string().email("Ungültige E-Mail-Adresse"),
+  password: z.string().min(8, "Passwort muss mindestens 8 Zeichen lang sein"),
   confirmPassword: z.string(),
 }).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
+  message: "Passwörter stimmen nicht überein",
   path: ["confirmPassword"],
 });
 
@@ -48,15 +47,15 @@ export default function Register() {
     },
     onSuccess: () => {
       toast({
-        title: "Account created",
-        description: "Welcome to pix.immo!",
+        title: "Konto erstellt",
+        description: "Willkommen bei PIX.IMMO!",
       });
       setLocation("/dashboard");
     },
     onError: (error: Error) => {
       toast({
         variant: "destructive",
-        title: "Registration failed",
+        title: "Registrierung fehlgeschlagen",
         description: error.message,
       });
       setIsLoading(false);
@@ -72,17 +71,16 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <Link href="/">
-            <div className="inline-flex items-center gap-2 hover-elevate active-elevate-2 cursor-pointer px-4 py-2 rounded-lg">
-              <Camera className="h-8 w-8 text-primary" />
-              <span className="text-2xl font-bold">pix.immo</span>
+            <div className="inline-flex items-center cursor-pointer">
+              <span className="text-2xl font-semibold tracking-wide">PIX.IMMO</span>
             </div>
           </Link>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Create Your Account</CardTitle>
-            <CardDescription>Get started with professional property photography</CardDescription>
+            <CardTitle>Konto erstellen</CardTitle>
+            <CardDescription>Starten Sie mit professioneller Immobilienfotografie</CardDescription>
           </CardHeader>
           <CardContent>
             <Form {...form}>
@@ -92,11 +90,11 @@ export default function Register() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>E-Mail</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="you@example.com"
+                          placeholder="ihre@email.de"
                           data-testid="input-email"
                           {...field}
                         />
@@ -111,11 +109,11 @@ export default function Register() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>Passwort</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="At least 8 characters"
+                          placeholder="Mindestens 8 Zeichen"
                           data-testid="input-password"
                           {...field}
                         />
@@ -130,11 +128,11 @@ export default function Register() {
                   name="confirmPassword"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Confirm Password</FormLabel>
+                      <FormLabel>Passwort bestätigen</FormLabel>
                       <FormControl>
                         <Input
                           type="password"
-                          placeholder="Confirm your password"
+                          placeholder="Passwort wiederholen"
                           data-testid="input-confirm-password"
                           {...field}
                         />
@@ -150,16 +148,16 @@ export default function Register() {
                   disabled={isLoading}
                   data-testid="button-register"
                 >
-                  {isLoading ? "Creating account..." : "Create Account"}
+                  {isLoading ? "Konto wird erstellt..." : "Konto erstellen"}
                 </Button>
               </form>
             </Form>
 
             <div className="mt-6 text-center text-sm">
-              <span className="text-muted-foreground">Already have an account? </span>
+              <span className="text-muted-foreground">Bereits registriert? </span>
               <Link href="/login">
                 <span className="font-medium text-primary hover:underline cursor-pointer" data-testid="link-login">
-                  Sign in
+                  Anmelden
                 </span>
               </Link>
             </div>

@@ -14,12 +14,12 @@ import { Camera, ArrowLeft } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 
 const orderSchema = z.object({
-  propertyName: z.string().min(1, "Property name is required"),
-  contactName: z.string().min(1, "Contact name is required"),
-  contactEmail: z.string().email("Invalid email address"),
-  contactPhone: z.string().min(1, "Contact phone is required"),
-  propertyAddress: z.string().min(1, "Property address is required"),
-  preferredDate: z.string().min(1, "Preferred date is required"),
+  propertyName: z.string().min(1, "Name der Immobilie erforderlich"),
+  contactName: z.string().min(1, "Kontaktname erforderlich"),
+  contactEmail: z.string().email("Ungültige E-Mail-Adresse"),
+  contactPhone: z.string().min(1, "Telefonnummer erforderlich"),
+  propertyAddress: z.string().min(1, "Adresse der Immobilie erforderlich"),
+  preferredDate: z.string().min(1, "Bevorzugtes Datum erforderlich"),
   notes: z.string().optional(),
 });
 
@@ -68,8 +68,8 @@ export default function OrderForm() {
     },
     onSuccess: () => {
       toast({
-        title: "Order created",
-        description: "Your photography order has been submitted successfully!",
+        title: "Auftrag erstellt",
+        description: "Ihr Fotoauftrag wurde erfolgreich übermittelt!",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/orders"] });
       setLocation("/dashboard");
@@ -77,7 +77,7 @@ export default function OrderForm() {
     onError: (error: Error) => {
       toast({
         variant: "destructive",
-        title: "Order failed",
+        title: "Auftrag fehlgeschlagen",
         description: error.message,
       });
       setIsLoading(false);
@@ -93,7 +93,7 @@ export default function OrderForm() {
       <div className="flex min-h-screen items-center justify-center">
         <div className="text-center">
           <Camera className="mx-auto mb-4 h-12 w-12 animate-pulse text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
+          <p className="text-muted-foreground">Lädt...</p>
         </div>
       </div>
     );
@@ -106,7 +106,7 @@ export default function OrderForm() {
           <Link href="/dashboard">
             <Button variant="ghost" data-testid="button-back">
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+              Zurück zum Dashboard
             </Button>
           </Link>
         </div>
@@ -114,17 +114,17 @@ export default function OrderForm() {
 
       <div className="container mx-auto max-w-3xl px-6 py-12">
         <div className="mb-8 text-center">
-          <h1 className="mb-4 text-3xl font-bold md:text-4xl">New Photography Order</h1>
+          <h1 className="mb-4 text-3xl font-bold md:text-4xl">Neuer Fotoauftrag</h1>
           <p className="text-muted-foreground">
-            Fill in the property details and we'll schedule a professional photography session
+            Geben Sie die Immobiliendetails ein und wir planen eine professionelle Fotosession
           </p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Property Information</CardTitle>
+            <CardTitle>Immobilieninformationen</CardTitle>
             <CardDescription>
-              Please provide accurate details for the best service
+              Bitte geben Sie genaue Details für den besten Service an
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -135,10 +135,10 @@ export default function OrderForm() {
                   name="propertyName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Property Name</FormLabel>
+                      <FormLabel>Name der Immobilie</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="e.g., Luxury Villa Downtown"
+                          placeholder="z.B. Luxusvilla Innenstadt"
                           data-testid="input-property-name"
                           {...field}
                         />
@@ -153,10 +153,10 @@ export default function OrderForm() {
                   name="propertyAddress"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Property Address</FormLabel>
+                      <FormLabel>Adresse der Immobilie</FormLabel>
                       <FormControl>
                         <Input
-                          placeholder="123 Main Street, City, State, ZIP"
+                          placeholder="Musterstraße 123, 12345 Stadt"
                           data-testid="input-property-address"
                           {...field}
                         />
@@ -172,10 +172,10 @@ export default function OrderForm() {
                     name="contactName"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contact Name</FormLabel>
+                        <FormLabel>Kontaktname</FormLabel>
                         <FormControl>
                           <Input
-                            placeholder="Your name"
+                            placeholder="Ihr Name"
                             data-testid="input-contact-name"
                             {...field}
                           />
@@ -190,11 +190,11 @@ export default function OrderForm() {
                     name="contactPhone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Contact Phone</FormLabel>
+                        <FormLabel>Telefonnummer</FormLabel>
                         <FormControl>
                           <Input
                             type="tel"
-                            placeholder="+1 (555) 123-4567"
+                            placeholder="+49 (123) 456-7890"
                             data-testid="input-contact-phone"
                             {...field}
                           />
@@ -210,11 +210,11 @@ export default function OrderForm() {
                   name="contactEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Email</FormLabel>
+                      <FormLabel>E-Mail-Adresse</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="you@example.com"
+                          placeholder="ihre@email.de"
                           data-testid="input-contact-email"
                           {...field}
                         />
@@ -229,7 +229,7 @@ export default function OrderForm() {
                   name="preferredDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Preferred Session Date</FormLabel>
+                      <FormLabel>Bevorzugtes Datum</FormLabel>
                       <FormControl>
                         <Input
                           type="date"
@@ -238,7 +238,7 @@ export default function OrderForm() {
                         />
                       </FormControl>
                       <FormDescription>
-                        When would you like the photography session?
+                        Wann möchten Sie die Fotosession?
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -250,17 +250,17 @@ export default function OrderForm() {
                   name="notes"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Additional Notes (Optional)</FormLabel>
+                      <FormLabel>Zusätzliche Notizen (Optional)</FormLabel>
                       <FormControl>
                         <Textarea
-                          placeholder="Any special requirements or details we should know..."
+                          placeholder="Besondere Anforderungen oder Details, die wir wissen sollten..."
                           className="min-h-32 resize-none"
                           data-testid="input-notes"
                           {...field}
                         />
                       </FormControl>
                       <FormDescription>
-                        E.g., specific rooms to photograph, access instructions, etc.
+                        z.B. bestimmte Räume zu fotografieren, Zugangshinweise, usw.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -275,7 +275,7 @@ export default function OrderForm() {
                       className="w-full"
                       data-testid="button-cancel"
                     >
-                      Cancel
+                      Abbrechen
                     </Button>
                   </Link>
                   <Button
@@ -284,7 +284,7 @@ export default function OrderForm() {
                     disabled={isLoading}
                     data-testid="button-submit"
                   >
-                    {isLoading ? "Submitting..." : "Submit Order"}
+                    {isLoading ? "Wird übermittelt..." : "Auftrag übermitteln"}
                   </Button>
                 </div>
               </form>

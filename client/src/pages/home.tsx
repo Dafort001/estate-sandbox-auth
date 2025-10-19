@@ -57,7 +57,7 @@ export default function Home() {
         {/* Hero Section - Just subtitle, no large title */}
         <section className="px-[5vw]">
           <p className="text-lg md:text-xl text-gray-600 tracking-wide mb-10" data-testid="hero-subtitle" style={{ marginTop: '35px' }}>
-            Corporate real estate photography
+            Professionelle Immobilienfotografie
           </p>
         </section>
 
@@ -73,7 +73,7 @@ export default function Home() {
           Blog
         </a>
         <Link href="/login">
-          <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-login">Login</span>
+          <span className="text-sm font-medium hover:underline cursor-pointer" data-testid="link-login">Anmelden</span>
         </Link>
         </nav>
 
@@ -241,7 +241,7 @@ export default function Home() {
                       onClick={() => setIsMenuOpen(false)}
                       data-testid="menu-link-login"
                     >
-                      Login
+                      Anmelden
                     </span>
                   </Link>
                 </li>
