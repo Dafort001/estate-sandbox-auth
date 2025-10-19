@@ -57,38 +57,101 @@ export default function Gallery() {
   const [lightboxImage, setLightboxImage] = useState<typeof galleryImages[0] | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
-  // Calculate row spans based on image heights for true masonry effect
+  // JS-driven masonry layout with exact 11px gaps
   useEffect(() => {
-    const resizeAllGridItems = () => {
-      const grid = gridRef.current;
-      if (!grid) return;
+    let layoutTimeout: NodeJS.Timeout | null = null;
 
-      const items = grid.querySelectorAll<HTMLElement>('.gallery-item-hover');
-      const rowHeight = parseInt(getComputedStyle(grid).getPropertyValue('grid-auto-rows'));
-      const rowGap = parseInt(getComputedStyle(grid).getPropertyValue('grid-row-gap'));
+    const performLayout = () => {
+      const container = gridRef.current;
+      if (!container) return;
 
+      const items = Array.from(container.querySelectorAll<HTMLElement>('.gallery-item-hover'));
+      const gap = 11; // Exact 11px gaps
+      
+      // Determine number of columns based on viewport width
+      const containerWidth = container.offsetWidth;
+      let numColumns = 1;
+      if (containerWidth >= 1200) numColumns = 4;
+      else if (containerWidth >= 900) numColumns = 3;
+      else if (containerWidth >= 600) numColumns = 2;
+
+      // Calculate column width
+      const totalGaps = (numColumns - 1) * gap;
+      const columnWidth = (containerWidth - totalGaps) / numColumns;
+
+      // Track column heights
+      const columnHeights = new Array(numColumns).fill(0);
+
+      // Position each item
       items.forEach((item) => {
         const img = item.querySelector('img');
         if (!img) return;
 
-        const height = img.getBoundingClientRect().height;
-        const rowSpan = Math.ceil((height + rowGap) / (rowHeight + rowGap));
-        item.style.gridRowEnd = `span ${rowSpan}`;
+        // Get image height - skip if not loaded
+        const imgHeight = img.getBoundingClientRect().height;
+        if (imgHeight === 0) return; // Skip unloaded images
+
+        // Find shortest column
+        const shortestColumn = columnHeights.indexOf(Math.min(...columnHeights));
+        
+        // Calculate position
+        const x = shortestColumn * (columnWidth + gap);
+        const y = columnHeights[shortestColumn];
+
+        // Position item
+        item.style.position = 'absolute';
+        item.style.width = `${columnWidth}px`;
+        item.style.transform = `translate(${x}px, ${y}px)`;
+
+        // Update column height
+        columnHeights[shortestColumn] += imgHeight + gap;
       });
+
+      // Set container height (tallest column minus trailing gap)
+      const maxHeight = Math.max(...columnHeights) - gap;
+      container.style.height = `${Math.max(0, maxHeight)}px`;
     };
 
-    // Resize on load and window resize
+    // Debounced layout to handle progressive image loading
+    const scheduleLayout = () => {
+      if (layoutTimeout) clearTimeout(layoutTimeout);
+      layoutTimeout = setTimeout(performLayout, 100);
+    };
+
+    // Set up image load listeners
     const images = gridRef.current?.querySelectorAll('img');
     images?.forEach((img) => {
-      if (img.complete) {
-        resizeAllGridItems();
-      } else {
-        img.addEventListener('load', resizeAllGridItems);
-      }
+      img.addEventListener('load', scheduleLayout);
+      img.addEventListener('error', scheduleLayout); // Also layout on error
     });
 
-    window.addEventListener('resize', resizeAllGridItems);
-    return () => window.removeEventListener('resize', resizeAllGridItems);
+    // Initial layout
+    scheduleLayout();
+
+    // Force layout after 2 seconds (fallback for any lazy/slow loading images)
+    const fallbackTimeout = setTimeout(() => {
+      performLayout();
+      // Then retry every second for up to 5 more times
+      let retries = 0;
+      const retryInterval = setInterval(() => {
+        performLayout();
+        retries++;
+        if (retries >= 5) clearInterval(retryInterval);
+      }, 1000);
+    }, 2000);
+
+    // Relayout on window resize
+    window.addEventListener('resize', scheduleLayout);
+
+    return () => {
+      if (layoutTimeout) clearTimeout(layoutTimeout);
+      clearTimeout(fallbackTimeout);
+      window.removeEventListener('resize', scheduleLayout);
+      images?.forEach((img) => {
+        img.removeEventListener('load', scheduleLayout);
+        img.removeEventListener('error', scheduleLayout);
+      });
+    };
   }, []);
 
   return (
@@ -134,7 +197,6 @@ export default function Gallery() {
                 <img
                   src={image.src}
                   alt=""
-                  loading="lazy"
                   className="gallery-img"
                   data-testid={`img-${image.id}`}
                 />

@@ -354,44 +354,19 @@
   }
 }
 
-/* Masonry Grid Layout - True grid-based masonry */
+/* Masonry Grid Layout - JS-driven absolute positioning with exact 11px gaps */
 .masonry-grid {
-  display: grid;
-  grid-auto-rows: 10px;
-  grid-gap: 11px;
+  position: relative;
+  width: 100%;
 }
 
-/* Responsive grid columns */
-/* Mobile: 1 column (< 600px) */
-.masonry-grid {
-  grid-template-columns: 1fr;
-}
-
-/* Tablet: 2 columns (600-899px) */
-@media (min-width: 600px) {
-  .masonry-grid {
-    grid-template-columns: repeat(2, 1fr);
-  }
-}
-
-/* Desktop: 3 columns (900-1199px) */
-@media (min-width: 900px) {
-  .masonry-grid {
-    grid-template-columns: repeat(3, 1fr);
-  }
-}
-
-/* Large Desktop: 4 columns (≥1200px) */
-@media (min-width: 1200px) {
-  .masonry-grid {
-    grid-template-columns: repeat(4, 1fr);
-  }
-}
-
-/* Masonry grid items - grid cell container */
+/* Masonry grid items - absolutely positioned */
 .gallery-item-hover {
   display: block;
   line-height: 0;
+  top: 0;
+  left: 0;
+  transition: transform 0.3s ease;
 }
 
 /* Image wrapper with overlay - fits image exactly */
