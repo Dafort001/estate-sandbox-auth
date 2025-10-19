@@ -138,6 +138,11 @@ export default function Gallery() {
                 className="w-full h-auto block"
                 data-testid={`img-${image.id}`}
               />
+              <div className="masonry-hover-overlay" aria-hidden="true">
+                <span className="masonry-hover-text">
+                  {image.alt}
+                </span>
+              </div>
             </div>
           ))}
         </div>

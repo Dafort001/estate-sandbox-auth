@@ -392,7 +392,6 @@
 .masonry-grid-item {
   position: relative;
   overflow: hidden;
-  transition: opacity 200ms ease-in-out;
 }
 
 .masonry-grid-item img {
@@ -402,13 +401,36 @@
   object-fit: cover;
 }
 
-.masonry-grid-item:hover {
-  opacity: 0.85;
+/* Hover overlay - appears only on mouse over */
+.masonry-hover-overlay {
+  position: absolute;
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 200ms ease-in-out;
+  pointer-events: none;
+  padding: 1rem;
+}
+
+.masonry-grid-item:hover .masonry-hover-overlay,
+.masonry-grid-item:focus-within .masonry-hover-overlay {
+  opacity: 1;
+}
+
+.masonry-hover-text {
+  color: white;
+  text-align: center;
+  font-size: 0.875rem;
+  line-height: 1.5;
+  font-weight: 500;
 }
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .masonry-grid-item {
+  .masonry-hover-overlay {
     transition: none;
   }
 }
