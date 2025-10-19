@@ -1,10 +1,9 @@
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Camera, Home } from "lucide-react";
-import { useState } from "react";
+import { Camera, Home, X } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
 
 // Fixture dataset: ~45 images with proper aspect ratio distribution
-// 75% Landscape (3:2), 10% Portrait (2:3), 15% Square (1:1)
 const galleryImages = [
   // Landscape images (34 items = 75%)
   { id: 1, alt: "Modern living room with floor-to-ceiling windows", src: "https://images.unsplash.com/photo-1600210492493-0946911123ea?w=1500&h=1000&fit=crop", type: "landscape" },
@@ -60,9 +59,44 @@ const galleryImages = [
 
 export default function Gallery() {
   const [lightboxImage, setLightboxImage] = useState<typeof galleryImages[0] | null>(null);
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Calculate row spans based on image heights for true masonry effect
+  useEffect(() => {
+    const resizeAllGridItems = () => {
+      const grid = gridRef.current;
+      if (!grid) return;
+
+      const items = grid.querySelectorAll<HTMLElement>('.masonry-grid-item');
+      const rowHeight = parseInt(getComputedStyle(grid).getPropertyValue('grid-auto-rows'));
+      const rowGap = parseInt(getComputedStyle(grid).getPropertyValue('grid-row-gap'));
+
+      items.forEach((item) => {
+        const img = item.querySelector('img');
+        if (!img) return;
+
+        const height = img.getBoundingClientRect().height;
+        const rowSpan = Math.ceil((height + rowGap) / (rowHeight + rowGap));
+        item.style.gridRowEnd = `span ${rowSpan}`;
+      });
+    };
+
+    // Resize on load and window resize
+    const images = gridRef.current?.querySelectorAll('img');
+    images?.forEach((img) => {
+      if (img.complete) {
+        resizeAllGridItems();
+      } else {
+        img.addEventListener('load', resizeAllGridItems);
+      }
+    });
+
+    window.addEventListener('resize', resizeAllGridItems);
+    return () => window.removeEventListener('resize', resizeAllGridItems);
+  }, []);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background">
       <header className="sticky top-0 z-50 border-b bg-background/80 backdrop-blur-lg">
         <div className="container mx-auto flex h-16 items-center justify-between px-6">
           <Link href="/">
@@ -88,19 +122,12 @@ export default function Gallery() {
       </header>
 
       <div className="container mx-auto px-6 py-12">
-        <div className="mb-12 text-center">
-          <h1 className="mb-4 text-4xl font-bold md:text-5xl">Property Gallery</h1>
-          <p className="mx-auto max-w-2xl text-lg text-muted-foreground">
-            Explore our portfolio of professional property photography with AI-generated captions
-          </p>
-        </div>
-
-        {/* Masonry Gallery */}
-        <div className="masonry-gallery">
+        {/* Masonry Grid */}
+        <div ref={gridRef} className="masonry-grid">
           {galleryImages.map((image) => (
             <div
               key={image.id}
-              className="masonry-item group cursor-pointer"
+              className="masonry-grid-item cursor-pointer"
               onClick={() => setLightboxImage(image)}
               data-testid={`image-${image.id}`}
             >
@@ -111,53 +138,36 @@ export default function Gallery() {
                 className="w-full h-auto block"
                 data-testid={`img-${image.id}`}
               />
-              <div 
-                className="masonry-overlay"
-                aria-hidden="true"
-              >
-                <span className="masonry-overlay-text">
-                  {image.alt}
-                </span>
-              </div>
             </div>
           ))}
         </div>
-
-        <div className="mt-16 text-center">
-          <p className="mb-6 text-muted-foreground">
-            Ready to showcase your properties with stunning photography?
-          </p>
-          <Link href="/order">
-            <Button size="lg" data-testid="button-order">
-              Order Photography Session
-            </Button>
-          </Link>
-        </div>
       </div>
 
-      {/* Simple Lightbox */}
+      {/* Lightbox */}
       {lightboxImage && (
         <div
-          className="fixed inset-0 z-[100] bg-background/95 flex items-center justify-center p-4"
+          className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-sm flex items-center justify-center p-6"
           onClick={() => setLightboxImage(null)}
           data-testid="lightbox"
         >
-          <button
-            className="absolute top-4 right-4 text-4xl text-foreground hover:text-muted-foreground transition-colors"
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute top-6 right-6 h-10 w-10"
             onClick={() => setLightboxImage(null)}
             data-testid="button-close-lightbox"
             aria-label="Close lightbox"
           >
-            ×
-          </button>
-          <div className="max-w-6xl max-h-[90vh] overflow-auto">
+            <X className="h-6 w-6" />
+          </Button>
+          <div className="max-w-6xl max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
             <img
               src={lightboxImage.src}
               alt={lightboxImage.alt}
               className="w-full h-auto"
               data-testid="lightbox-image"
             />
-            <p className="mt-4 text-center text-lg text-foreground">
+            <p className="mt-6 text-center text-base text-muted-foreground">
               {lightboxImage.alt}
             </p>
           </div>

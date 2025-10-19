@@ -354,85 +354,61 @@
   }
 }
 
-/* Masonry Gallery Layout */
-.masonry-gallery {
-  column-gap: 16px;
-  column-fill: auto;
+/* Masonry Grid Layout - True grid-based masonry */
+.masonry-grid {
+  display: grid;
+  grid-auto-rows: 10px;
+  grid-gap: 16px;
 }
 
-/* Responsive column breakpoints */
+/* Responsive grid columns */
 /* Mobile: 1 column (< 600px) */
-.masonry-gallery {
-  column-count: 1;
+.masonry-grid {
+  grid-template-columns: 1fr;
 }
 
 /* Tablet: 2 columns (600-899px) */
 @media (min-width: 600px) {
-  .masonry-gallery {
-    column-count: 2;
+  .masonry-grid {
+    grid-template-columns: repeat(2, 1fr);
   }
 }
 
 /* Desktop: 3 columns (900-1199px) */
 @media (min-width: 900px) {
-  .masonry-gallery {
-    column-count: 3;
+  .masonry-grid {
+    grid-template-columns: repeat(3, 1fr);
   }
 }
 
 /* Large Desktop: 4 columns (≥1200px) */
 @media (min-width: 1200px) {
-  .masonry-gallery {
-    column-count: 4;
+  .masonry-grid {
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
-/* Masonry items */
-.masonry-item {
-  break-inside: avoid;
-  margin-bottom: 16px;
+/* Masonry grid items - clean, minimal */
+.masonry-grid-item {
   position: relative;
   overflow: hidden;
-  border-radius: 0; /* No rounded corners */
+  transition: opacity 200ms ease-in-out;
 }
 
-.masonry-item img {
+.masonry-grid-item img {
   display: block;
   width: 100%;
   height: auto;
-  border-radius: 0; /* No rounded corners */
+  object-fit: cover;
 }
 
-/* Hover overlay */
-.masonry-overlay {
-  position: absolute;
-  inset: 0;
-  background-color: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: 0;
-  transition: opacity 200ms ease-in-out;
-  pointer-events: none;
-  padding: 1rem;
-}
-
-.masonry-item:hover .masonry-overlay,
-.masonry-item:focus-within .masonry-overlay {
-  opacity: 1;
-}
-
-.masonry-overlay-text {
-  color: white;
-  text-align: center;
-  font-size: 0.875rem;
-  line-height: 1.5;
-  font-weight: 500;
+.masonry-grid-item:hover {
+  opacity: 0.85;
 }
 
 /* Respect reduced motion preference */
 @media (prefers-reduced-motion: reduce) {
-  .masonry-overlay {
+  .masonry-grid-item {
     transition: none;
   }
 }
