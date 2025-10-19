@@ -215,11 +215,11 @@ export default function Home() {
               </button>
             </div>
             <nav>
-              <ul className="space-y-4">
+              <ul className="space-y-3">
                 <li>
                   <Link href="/gallery">
                     <span
-                      className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600 cursor-pointer"
+                      className="block text-base font-medium hover:underline cursor-pointer"
                       onClick={() => setIsMenuOpen(false)}
                       data-testid="menu-link-portfolio"
                     >
@@ -230,7 +230,7 @@ export default function Home() {
                 <li>
                   <a
                     href="#preise"
-                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    className="block text-base font-medium hover:underline"
                     onClick={() => setIsMenuOpen(false)}
                     data-testid="menu-link-preise"
                   >
@@ -240,7 +240,7 @@ export default function Home() {
                 <li>
                   <a
                     href="#blog"
-                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    className="block text-base font-medium hover:underline"
                     onClick={() => setIsMenuOpen(false)}
                     data-testid="menu-link-blog"
                   >
@@ -250,7 +250,7 @@ export default function Home() {
                 <li>
                   <Link href="/login">
                     <span
-                      className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600 cursor-pointer"
+                      className="block text-base font-medium hover:underline cursor-pointer"
                       onClick={() => setIsMenuOpen(false)}
                       data-testid="menu-link-login"
                     >
@@ -261,7 +261,7 @@ export default function Home() {
                 <li>
                   <Link href="/dashboard">
                     <span
-                      className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600 cursor-pointer"
+                      className="block text-base font-medium hover:underline cursor-pointer"
                       onClick={() => setIsMenuOpen(false)}
                       data-testid="menu-link-dashboard"
                     >
@@ -272,7 +272,7 @@ export default function Home() {
                 <li>
                   <a
                     href="#impressum"
-                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    className="block text-base font-medium hover:underline"
                     onClick={() => setIsMenuOpen(false)}
                     data-testid="menu-link-impressum"
                   >
@@ -282,7 +282,7 @@ export default function Home() {
                 <li>
                   <a
                     href="#datenschutz"
-                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    className="block text-base font-medium hover:underline"
                     onClick={() => setIsMenuOpen(false)}
                     data-testid="menu-link-datenschutz"
                   >
@@ -292,7 +292,7 @@ export default function Home() {
                 <li>
                   <a
                     href="#kontakt"
-                    className="block py-2 text-base border-b border-dashed border-gray-200 hover:text-gray-600"
+                    className="block text-base font-medium hover:underline"
                     onClick={() => setIsMenuOpen(false)}
                     data-testid="menu-link-kontakt"
                   >
