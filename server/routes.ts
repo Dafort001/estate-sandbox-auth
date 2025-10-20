@@ -5,6 +5,7 @@ import { createJobSchema, initUploadSchema, assignRoomTypeSchema, type InitUploa
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { upload, processUploadedFiles } from "./uploadHandler";
+import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
 
 // Middleware to validate request body with Zod
 function validateBody(schema: z.ZodSchema) {
@@ -172,36 +173,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { jobId, shootId } = req.params;
       
-      // Verify job and shoot exist
-      const job = await storage.getJob(jobId);
-      if (!job) {
-        return res.status(404).json({ error: "Job not found" });
-      }
-      
-      const shoot = await storage.getShoot(shootId);
-      if (!shoot) {
-        return res.status(404).json({ error: "Shoot not found" });
+      // Generate handoff package (ZIP with renamed files and manifest)
+      const packageResult = await generateHandoffPackage(jobId, shootId);
+      if (!packageResult.ok) {
+        return res.status(500).json({ error: packageResult.error || "Failed to generate handoff package" });
       }
       
       // Generate download token (36 hours validity)
-      const downloadToken = randomBytes(32).toString('hex');
-      const expiresAt = Date.now() + (36 * 60 * 60 * 1000); // 36 hours
-      await storage.createEditorToken(shootId, 'download', downloadToken, expiresAt);
+      const downloadTokenResult = await generateHandoffToken(shootId);
+      if (!downloadTokenResult.ok) {
+        return res.status(500).json({ error: downloadTokenResult.error || "Failed to generate download token" });
+      }
       
       // Generate upload token (36 hours validity)
       const uploadToken = randomBytes(32).toString('hex');
+      const expiresAt = Date.now() + (36 * 60 * 60 * 1000); // 36 hours
       await storage.createEditorToken(shootId, 'upload', uploadToken, expiresAt);
       
-      // TODO: Generate ZIP package with RAW files and manifests
-      // This will be implemented later with actual file handling
-      
-      // Update shoot status
-      await storage.updateShootStatus(shootId, 'handoff_generated', 'handoffGeneratedAt');
-      
+      // Only expose signed download URL, not internal storage path
       res.json({
-        downloadUrl: `/api/handoff/download/${downloadToken}`,
+        downloadUrl: `/api/handoff/download/${downloadTokenResult.token}`,
         uploadToken: uploadToken,
-        expiresAt,
+        expiresAt: downloadTokenResult.expiresAt,
       });
     } catch (error) {
       console.error("Error generating handoff package:", error);
