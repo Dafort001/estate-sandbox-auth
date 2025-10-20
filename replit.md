@@ -33,6 +33,15 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
 - **Homepage**: Minimalist design inspired by NewApology aesthetic. Features sticky header with hamburger menu, generous whitespace (35vh), hero section with "PIX.IMMO" title and "Corporate real estate photography" subtitle, plain text navigation links (Portfolio, Preise, Blog, Login), horizontal scrolling image strip with 11px gaps and infinite loop animation, and minimal footer with legal links (Impressum, Datenschutz, Kontakt).
 - **Gallery**: JavaScript-driven masonry layout with absolute positioning for exact 11px spacing (both horizontal and vertical). Features responsive columns (1/2/3/4 based on viewport), progressive image loading with retry mechanism, dark overlay on hover with caption text, and lightbox modal for full-size viewing.
 - **Blog**: Two-page blog system with overview and detail pages. Overview page (/blog) displays 9 blog posts in a responsive grid (1/2/3 columns) with portrait images (2:3 aspect ratio), 11px gaps, and dark overlay on hover showing title. Detail pages (/blog/:slug) feature full-width portrait hero image with title overlay, narrow centered text column (max-w-xl/576px), and landscape images embedded between paragraphs using -mx-6 negative margins to extend to article gutter. All content in German.
+- **Preise** (/preise): Comprehensive pricing page with 8 service sections:
+  - Immobilienfotografie (Real Estate Photography) - from €180
+  - Drohnenaufnahmen (Drone shots) - from €150 (or €100 as package add-on)
+  - Videoaufnahmen (Video recordings) - from €199
+  - Virtuelle Rundgänge/360° Tours - from €100 (basic) or €239 (extended)
+  - Virtuelles Staging (Virtual Staging) - on request
+  - Bildoptimierung und KI-Retusche (Image optimization) - from €3.90/image
+  - Travel fees and service area information (Hamburg & Berlin)
+  - Call-to-action section linking to login and contact pages
 - **Legal Pages**: Three information pages accessible from footer and hamburger menu:
   - **Impressum** (/impressum): Company information, legal notice (§5 TMG, §18 MStV), TDM copyright notice (§44b UrhG), and data protection summary
   - **AGB** (/agb): Complete terms and conditions with 9 sections covering contracts, image rights, usage licensing, fees, liability, and dispute resolution
