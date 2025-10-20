@@ -99,7 +99,7 @@ export default function AdminEditorial() {
         dueDate: data.dueDate ? new Date(data.dueDate).getTime() : undefined,
         tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : undefined,
       };
-      return apiRequest("/api/editorial", "POST", payload);
+      return apiRequest("POST", "/api/editorial", payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/editorial"] });
@@ -126,7 +126,7 @@ export default function AdminEditorial() {
         dueDate: data.dueDate ? new Date(data.dueDate).getTime() : undefined,
         tags: data.tags ? data.tags.split(",").map((t) => t.trim()) : undefined,
       };
-      return apiRequest(`/api/editorial/${id}`, "PATCH", payload);
+      return apiRequest("PATCH", `/api/editorial/${id}`, payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/editorial"] });
@@ -148,7 +148,7 @@ export default function AdminEditorial() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/editorial/${id}`, "DELETE");
+      return apiRequest("DELETE", `/api/editorial/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/editorial"] });
@@ -190,10 +190,12 @@ export default function AdminEditorial() {
     setIsCreateOpen(true);
   };
 
-  const handleDialogClose = () => {
-    setIsCreateOpen(false);
-    setEditingItem(null);
-    form.reset();
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsCreateOpen(open);
+    if (!open) {
+      setEditingItem(null);
+      form.reset();
+    }
   };
 
   const filterItems = (items: EditorialItem[]) => {
@@ -222,7 +224,7 @@ export default function AdminEditorial() {
             Verwalte Blog-Beiträge, Website-Updates und Content-Strategie
           </p>
         </div>
-        <Dialog open={isCreateOpen} onOpenChange={handleDialogClose}>
+        <Dialog open={isCreateOpen} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button data-testid="button-create-item">
               <Plus className="w-4 h-4 mr-2" />
@@ -414,7 +416,7 @@ export default function AdminEditorial() {
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleDialogClose}
+                    onClick={() => handleDialogOpenChange(false)}
                     data-testid="button-cancel"
                   >
                     Abbrechen
