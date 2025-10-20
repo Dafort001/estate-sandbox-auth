@@ -6,6 +6,8 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { upload, processUploadedFiles } from "./uploadHandler";
 import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
+import { scheduleEditorReturnProcessing, scheduleAICaptioning } from "./backgroundQueue";
+import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
 
 // Middleware to validate request body with Zod
 function validateBody(schema: z.ZodSchema) {
@@ -173,6 +175,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { jobId, shootId } = req.params;
       
+      // Verify job and shoot exist
+      const job = await storage.getJob(jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      const shoot = await storage.getShoot(shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+      
       // Generate handoff package (ZIP with renamed files and manifest)
       const packageResult = await generateHandoffPackage(jobId, shootId);
       if (!packageResult.ok) {
@@ -189,6 +202,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uploadToken = randomBytes(32).toString('hex');
       const expiresAt = Date.now() + (36 * 60 * 60 * 1000); // 36 hours
       await storage.createEditorToken(shootId, 'upload', uploadToken, expiresAt);
+      
+      // Send notification to producer
+      const downloadUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/api/handoff/download/${downloadTokenResult.token}`;
+      await notifyHandoffReady({
+        email: "demo@pix.immo", // TODO: Get from user/job settings
+        jobNumber: job.jobNumber,
+        shootCode: shoot.shootCode,
+        downloadUrl,
+      });
       
       // Only expose signed download URL, not internal storage path
       res.json({
@@ -240,9 +262,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/editor/:token/upload - Editor upload endpoint
-  app.post("/api/editor/:token/upload", async (req: Request, res: Response) => {
+  app.post("/api/editor/:token/upload", upload.single("package"), async (req: Request, res: Response) => {
     try {
       const { token } = req.params;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
       
       // Verify token
       const editorToken = await storage.getEditorToken(token);
@@ -250,16 +277,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ error: "Invalid or expired token" });
       }
       
+      // Get shoot and job info for notifications
+      const shoot = await storage.getShoot(editorToken.shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+      
+      const job = await storage.getJob(shoot.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
       // Mark token as used
       await storage.markEditorTokenUsed(token);
       
-      // TODO: Handle ZIP upload, validation, and unpacking
-      // This will be implemented later with file handling
+      // TODO: Implement ZIP validation and unpacking
+      // For now, just log the upload
+      console.log(`📦 Editor uploaded ${file.size} bytes for shoot ${editorToken.shootId}`);
       
       // Update shoot status
       await storage.updateShootStatus(editorToken.shootId, 'editor_returned', 'editorReturnedAt');
       
-      res.json({ success: true, message: "Upload received successfully" });
+      // Schedule background processing (60-minute quiet window)
+      const queueJobId = scheduleEditorReturnProcessing(editorToken.shootId);
+      
+      // Send notification to producer
+      await notifyEditorUploadComplete({
+        email: "demo@pix.immo", // TODO: Get from user/job settings
+        jobNumber: job.jobNumber,
+        shootCode: shoot.shootCode,
+        imageCount: 0, // TODO: Get actual count from unpacked ZIP
+      });
+      
+      res.json({ 
+        success: true, 
+        message: "Upload received successfully",
+        queueJobId,
+      });
     } catch (error) {
       console.error("Error handling editor upload:", error);
       res.status(500).json({ error: "Failed to process upload" });
