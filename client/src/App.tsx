@@ -26,6 +26,7 @@ import Datenschutz from "@/pages/datenschutz";
 import KontaktFormular from "@/pages/kontakt-formular";
 import About from "@/pages/about";
 import FAQ from "@/pages/faq";
+import AdminEditorial from "@/pages/admin-editorial";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -54,6 +55,7 @@ function Router() {
       <Route path="/intake" component={Intake} />
       <Route path="/jobs" component={Jobs} />
       <Route path="/review/:jobId/:shootId" component={Review} />
+      <Route path="/admin/editorial" component={AdminEditorial} />
       <Route component={NotFound} />
     </Switch>
   );
