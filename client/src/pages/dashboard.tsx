@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, LogOut, Image as ImageIcon, ListOrdered } from "lucide-react";
+import { Plus, LogOut, Image as ImageIcon, ListOrdered, Briefcase } from "lucide-react";
 import { apiRequest, getQueryFn } from "@/lib/queryClient";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -129,6 +129,12 @@ export default function Dashboard() {
             </div>
           </Link>
           <div className="flex items-center gap-4">
+            <Link href="/jobs">
+              <Button variant="ghost" data-testid="button-jobs">
+                <Briefcase className="mr-2 h-4 w-4" />
+                Workflow Jobs
+              </Button>
+            </Link>
             <Link href="/gallery">
               <Button variant="ghost" data-testid="button-gallery">
                 <ImageIcon className="mr-2 h-4 w-4" />
