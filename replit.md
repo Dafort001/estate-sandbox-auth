@@ -46,6 +46,15 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
   - **Background Queue**: 60-minute quiet window before processing editor returns (stub implementation)
   - **Notifications**: Email and SMS alerts for handoff-ready and editor-upload-complete events (stub implementation)
   - **Production Routes**: All Sprint 1 workflow routes fully migrated to Hono (server/index.ts) for Cloudflare Workers compatibility. Development routes (server/routes.ts) maintained for HMR/debugging parity.
+- **Client Gallery (PRODUCTION READY)**:
+  - **Gallery Page** (/galerie): Authenticated page displaying client's completed photography projects with approved final images
+  - **Job Organization**: Jobs grouped by property name with shoot codes, dates, and image counts
+  - **Image Viewer**: Responsive grid layout with lightbox modal for full-size viewing, prev/next navigation with keyboard support
+  - **Download**: Individual image download functionality with proper content-type headers
+  - **Authorization**: Role-based access - clients see only their jobs, admins see all jobs
+  - **API Endpoints**: GET /api/client/gallery (job/shoot/image data), GET /api/image/:id (stream images), GET /api/download/image/:id (download with headers)
+  - **Object Storage**: Images served directly from object storage with authorization checks, proper caching headers
+  - **Security**: Job ownership verification before streaming images, unauthenticated users redirected to login via useEffect
 - **Development Server**: Express + Vite middleware for development with HMR, proxied API requests to the Hono backend.
 - **Production Server**: Hono serves static files and handles API requests, designed for Cloudflare Workers.
 
