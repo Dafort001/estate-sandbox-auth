@@ -12,6 +12,11 @@ import { rateLimiter } from "hono-rate-limiter";
 import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
 import { scheduleEditorReturnProcessing } from "./backgroundQueue";
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
+import { processUploadedFiles } from "./uploadHandler";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { tmpdir } from "os";
+import { uploadFile } from "./objectStorage";
 
 const app = new Hono();
 
@@ -762,6 +767,85 @@ app.put("/api/stacks/:id/room-type", async (c) => {
   }
 });
 
+// POST /api/uploads/:shootId - Upload photos
+app.post("/api/uploads/:shootId", async (c) => {
+  try {
+    const shootId = c.req.param("shootId");
+    
+    // Verify shoot exists
+    const shoot = await storage.getShoot(shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    // Parse multipart form data
+    const formData = await c.req.formData();
+    const files = formData.getAll("photos");
+    
+    if (!files || files.length === 0) {
+      return c.json({ error: "No files uploaded" }, 400);
+    }
+    
+    // Get frame count from formData (default to 5)
+    const frameCountValue = formData.get("frameCount");
+    let frameCount: 3 | 5 = 5;
+    if (frameCountValue === "3") {
+      frameCount = 3;
+    }
+    
+    // Convert FormData files to format expected by processUploadedFiles
+    // Save files to temporary directory first
+    const tmpDir = join(tmpdir(), `upload-${shootId}-${Date.now()}`);
+    await mkdir(tmpDir, { recursive: true });
+    
+    const multerFiles = [];
+    for (const file of files) {
+      if (file instanceof File) {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        const filename = file.name;
+        const filepath = join(tmpDir, filename);
+        
+        await writeFile(filepath, buffer);
+        
+        // Create multer-like file object
+        multerFiles.push({
+          fieldname: "photos",
+          originalname: filename,
+          encoding: "7bit",
+          mimetype: file.type || "application/octet-stream",
+          destination: tmpDir,
+          filename: filename,
+          path: filepath,
+          size: buffer.length,
+          buffer: buffer,
+        });
+      }
+    }
+    
+    // Get jobId from shoot
+    const job = await storage.getJob(shoot.jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    // Process uploaded files using existing handler
+    const result = await processUploadedFiles(shootId, job.id, multerFiles as any, frameCount);
+    
+    if (!result.success) {
+      return c.json({ error: result.error || "Failed to process files" }, 500);
+    }
+    
+    return c.json({ 
+      success: true, 
+      stackCount: result.stackCount,
+      imageCount: result.imageCount,
+    });
+  } catch (error) {
+    console.error("Error uploading files:", error);
+    return c.json({ error: "Failed to upload files" }, 500);
+  }
+});
+
 // POST /api/projects/:jobId/handoff/:shootId - Generate handoff package
 app.post("/api/projects/:jobId/handoff/:shootId", async (c) => {
   try {
@@ -850,6 +934,76 @@ app.get("/api/handoff/download/:token", async (c) => {
   } catch (error) {
     console.error("Error downloading handoff package:", error);
     return c.json({ error: "Failed to download handoff package" }, 500);
+  }
+});
+
+// POST /api/editor/:token/upload - Editor upload endpoint
+app.post("/api/editor/:token/upload", async (c) => {
+  try {
+    const token = c.req.param("token");
+    
+    // Parse multipart form data
+    const formData = await c.req.formData();
+    const file = formData.get("package");
+    
+    if (!file || !(file instanceof File)) {
+      return c.json({ error: "No file uploaded" }, 400);
+    }
+    
+    // Verify token
+    const editorToken = await storage.getEditorToken(token);
+    if (!editorToken || editorToken.tokenType !== 'upload') {
+      return c.json({ error: "Invalid or expired token" }, 401);
+    }
+    
+    // Get shoot and job info for notifications
+    const shoot = await storage.getShoot(editorToken.shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    const job = await storage.getJob(shoot.jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    // Mark token as used
+    await storage.markEditorTokenUsed(token);
+    
+    // Save uploaded ZIP to object storage
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const storagePath = `/projects/${job.id}/edits/${editorToken.shootId}/editor_return.zip`;
+    
+    const uploadResult = await uploadFile(storagePath, buffer, file.type || "application/zip");
+    if (!uploadResult.ok) {
+      console.error("Failed to upload editor return package:", uploadResult.error);
+      return c.json({ error: "Failed to store editor return package" }, 500);
+    }
+    
+    console.log(`📦 Editor uploaded ${file.size} bytes for shoot ${editorToken.shootId} to ${storagePath}`);
+    
+    // Update shoot status
+    await storage.updateShootStatus(editorToken.shootId, 'editor_returned', 'editorReturnedAt');
+    
+    // Schedule background processing (60-minute quiet window)
+    const queueJobId = scheduleEditorReturnProcessing(editorToken.shootId);
+    
+    // Send notification to producer
+    await notifyEditorUploadComplete({
+      email: "demo@pix.immo", // TODO: Get from user/job settings
+      jobNumber: job.jobNumber,
+      shootCode: shoot.shootCode,
+      imageCount: 0, // TODO: Get actual count from unpacked ZIP
+    });
+    
+    return c.json({ 
+      success: true, 
+      message: "Upload received successfully",
+      queueJobId,
+    });
+  } catch (error) {
+    console.error("Error handling editor upload:", error);
+    return c.json({ error: "Failed to process upload" }, 500);
   }
 });
 
