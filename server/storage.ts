@@ -1,6 +1,6 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, type User, type Session, type RefreshToken, type PasswordResetToken, type Order } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken } from "@shared/schema";
 import { db } from "./db";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -45,6 +45,53 @@ export interface IStorage {
   getUserOrders(userId: string): Promise<Order[]>;
   getAllOrders(): Promise<Order[]>;
   updateOrderStatus(id: string, status: string): Promise<void>;
+  
+  // Workflow operations - Jobs
+  createJob(userId: string, propertyName: string, propertyAddress?: string): Promise<Job>;
+  getJob(id: string): Promise<Job | undefined>;
+  getJobByNumber(jobNumber: string): Promise<Job | undefined>;
+  getUserJobs(userId: string): Promise<Job[]>;
+  getAllJobs(): Promise<Job[]>;
+  updateJobStatus(id: string, status: string): Promise<void>;
+  
+  // Workflow operations - Shoots
+  createShoot(jobId: string): Promise<Shoot>;
+  getShoot(id: string): Promise<Shoot | undefined>;
+  getShootByCode(shootCode: string): Promise<Shoot | undefined>;
+  getJobShoots(jobId: string): Promise<Shoot[]>;
+  getActiveShootForJob(jobId: string): Promise<Shoot | undefined>;
+  updateShootStatus(id: string, status: string, timestampField?: string): Promise<void>;
+  
+  // Workflow operations - Stacks
+  createStack(shootId: string, stackNumber: string, frameCount: number, roomType: string): Promise<Stack>;
+  getStack(id: string): Promise<Stack | undefined>;
+  getShootStacks(shootId: string): Promise<Stack[]>;
+  updateStackRoomType(id: string, roomType: string): Promise<void>;
+  updateStackFrameCount(id: string, frameCount: number): Promise<void>;
+  getNextSequenceIndexForRoom(shootId: string, roomType: string): Promise<number>;
+  
+  // Workflow operations - Images
+  createImage(data: {
+    shootId: string;
+    stackId?: string;
+    originalFilename: string;
+    renamedFilename?: string;
+    filePath: string;
+    fileSize?: number;
+    mimeType?: string;
+    exifDate?: number;
+    exposureValue?: string;
+    positionInStack?: number;
+  }): Promise<Image>;
+  getImage(id: string): Promise<Image | undefined>;
+  getShootImages(shootId: string): Promise<Image[]>;
+  getStackImages(stackId: string): Promise<Image[]>;
+  updateImageRenamedFilename(id: string, renamedFilename: string): Promise<void>;
+  
+  // Workflow operations - Editor Tokens
+  createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number): Promise<EditorToken>;
+  getEditorToken(token: string): Promise<EditorToken | undefined>;
+  markEditorTokenUsed(token: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -227,6 +274,226 @@ export class DatabaseStorage implements IStorage {
 
   async updateOrderStatus(id: string, status: string): Promise<void> {
     await db.update(orders).set({ status }).where(eq(orders.id, id));
+  }
+
+  // Job operations
+  async createJob(userId: string, propertyName: string, propertyAddress?: string): Promise<Job> {
+    const id = randomUUID();
+    const jobNumber = `PIX-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
+    const [job] = await db
+      .insert(jobs)
+      .values({
+        id,
+        jobNumber,
+        userId,
+        propertyName,
+        propertyAddress,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return job;
+  }
+
+  async getJob(id: string): Promise<Job | undefined> {
+    const [job] = await db.select().from(jobs).where(eq(jobs.id, id));
+    return job || undefined;
+  }
+
+  async getJobByNumber(jobNumber: string): Promise<Job | undefined> {
+    const [job] = await db.select().from(jobs).where(eq(jobs.jobNumber, jobNumber));
+    return job || undefined;
+  }
+
+  async getUserJobs(userId: string): Promise<Job[]> {
+    return await db.select().from(jobs).where(eq(jobs.userId, userId)).orderBy(desc(jobs.createdAt));
+  }
+
+  async getAllJobs(): Promise<Job[]> {
+    return await db.select().from(jobs).orderBy(desc(jobs.createdAt));
+  }
+
+  async updateJobStatus(id: string, status: string): Promise<void> {
+    await db.update(jobs).set({ status }).where(eq(jobs.id, id));
+  }
+
+  // Shoot operations
+  async createShoot(jobId: string): Promise<Shoot> {
+    const id = randomUUID();
+    const shootCode = id.substring(0, 5).toLowerCase();
+    const [shoot] = await db
+      .insert(shoots)
+      .values({
+        id,
+        shootCode,
+        jobId,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return shoot;
+  }
+
+  async getShoot(id: string): Promise<Shoot | undefined> {
+    const [shoot] = await db.select().from(shoots).where(eq(shoots.id, id));
+    return shoot || undefined;
+  }
+
+  async getShootByCode(shootCode: string): Promise<Shoot | undefined> {
+    const [shoot] = await db.select().from(shoots).where(eq(shoots.shootCode, shootCode));
+    return shoot || undefined;
+  }
+
+  async getJobShoots(jobId: string): Promise<Shoot[]> {
+    return await db.select().from(shoots).where(eq(shoots.jobId, jobId)).orderBy(desc(shoots.createdAt));
+  }
+
+  async getActiveShootForJob(jobId: string): Promise<Shoot | undefined> {
+    const [shoot] = await db
+      .select()
+      .from(shoots)
+      .where(
+        and(
+          eq(shoots.jobId, jobId),
+          eq(shoots.status, 'initialized')
+        )
+      )
+      .orderBy(desc(shoots.createdAt))
+      .limit(1);
+    return shoot || undefined;
+  }
+
+  async updateShootStatus(id: string, status: string, timestampField?: string): Promise<void> {
+    const updateData: any = { status };
+    if (timestampField) {
+      updateData[timestampField] = Date.now();
+    }
+    await db.update(shoots).set(updateData).where(eq(shoots.id, id));
+  }
+
+  // Stack operations
+  async createStack(shootId: string, stackNumber: string, frameCount: number, roomType: string): Promise<Stack> {
+    const id = randomUUID();
+    const sequenceIndex = await this.getNextSequenceIndexForRoom(shootId, roomType);
+    const [stack] = await db
+      .insert(stacks)
+      .values({
+        id,
+        shootId,
+        stackNumber,
+        roomType,
+        frameCount,
+        sequenceIndex,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return stack;
+  }
+
+  async getStack(id: string): Promise<Stack | undefined> {
+    const [stack] = await db.select().from(stacks).where(eq(stacks.id, id));
+    return stack || undefined;
+  }
+
+  async getShootStacks(shootId: string): Promise<Stack[]> {
+    return await db.select().from(stacks).where(eq(stacks.shootId, shootId));
+  }
+
+  async updateStackRoomType(id: string, roomType: string): Promise<void> {
+    await db.update(stacks).set({ roomType }).where(eq(stacks.id, id));
+  }
+
+  async updateStackFrameCount(id: string, frameCount: number): Promise<void> {
+    await db.update(stacks).set({ frameCount }).where(eq(stacks.id, id));
+  }
+
+  async getNextSequenceIndexForRoom(shootId: string, roomType: string): Promise<number> {
+    const existingStacks = await db
+      .select()
+      .from(stacks)
+      .where(and(eq(stacks.shootId, shootId), eq(stacks.roomType, roomType)));
+    return existingStacks.length + 1;
+  }
+
+  // Image operations
+  async createImage(data: {
+    shootId: string;
+    stackId?: string;
+    originalFilename: string;
+    renamedFilename?: string;
+    filePath: string;
+    fileSize?: number;
+    mimeType?: string;
+    exifDate?: number;
+    exposureValue?: string;
+    positionInStack?: number;
+  }): Promise<Image> {
+    const id = randomUUID();
+    const [image] = await db
+      .insert(images)
+      .values({
+        id,
+        shootId: data.shootId,
+        stackId: data.stackId,
+        originalFilename: data.originalFilename,
+        renamedFilename: data.renamedFilename,
+        filePath: data.filePath,
+        fileSize: data.fileSize,
+        mimeType: data.mimeType,
+        exifDate: data.exifDate,
+        exposureValue: data.exposureValue,
+        positionInStack: data.positionInStack,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return image;
+  }
+
+  async getImage(id: string): Promise<Image | undefined> {
+    const [image] = await db.select().from(images).where(eq(images.id, id));
+    return image || undefined;
+  }
+
+  async getShootImages(shootId: string): Promise<Image[]> {
+    return await db.select().from(images).where(eq(images.shootId, shootId));
+  }
+
+  async getStackImages(stackId: string): Promise<Image[]> {
+    return await db.select().from(images).where(eq(images.stackId, stackId));
+  }
+
+  async updateImageRenamedFilename(id: string, renamedFilename: string): Promise<void> {
+    await db.update(images).set({ renamedFilename }).where(eq(images.id, id));
+  }
+
+  // Editor Token operations
+  async createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number): Promise<EditorToken> {
+    const id = randomUUID();
+    const [editorToken] = await db
+      .insert(editorTokens)
+      .values({
+        id,
+        shootId,
+        token,
+        tokenType,
+        expiresAt,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return editorToken;
+  }
+
+  async getEditorToken(token: string): Promise<EditorToken | undefined> {
+    const [editorToken] = await db.select().from(editorTokens).where(eq(editorTokens.token, token));
+    
+    // Remove expired tokens
+    if (editorToken && editorToken.expiresAt < Date.now()) {
+      return undefined;
+    }
+    
+    return editorToken || undefined;
+  }
+
+  async markEditorTokenUsed(token: string): Promise<void> {
+    await db.update(editorTokens).set({ usedAt: Date.now() }).where(eq(editorTokens.token, token));
   }
 }
 
