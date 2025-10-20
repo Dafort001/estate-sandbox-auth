@@ -51,16 +51,16 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
   - **Job Organization**: Jobs grouped by property name with shoot codes, dates, and image counts
   - **Image Viewer**: Responsive grid layout with lightbox modal for full-size viewing, prev/next navigation with keyboard support
   - **Favorites System** (picdrop-inspired): Heart icon on each image for favoriting, filter to show only favorites, favorite count displayed per job, toggle favorites in lightbox view
-  - **Comments System**: Client feedback on individual images via comment threads, displayed in lightbox sidebar, shows user email and timestamp, real-time updates via TanStack Query
+  - **Comments System**: Client feedback on individual images via comment threads with optional alt text (.txt) for SEO and accessibility, displayed in lightbox sidebar, shows user email and timestamp, real-time updates via TanStack Query
   - **Bulk Download**: Download all favorited images as ZIP file with proper authorization, streams ZIP using archiver library
   - **Download**: Individual image download functionality with proper content-type headers
   - **Authorization**: Role-based access - clients see only their jobs, admins see all jobs. All favorites/comments operations verify image→shoot→job→user ownership chain via `verifyImageOwnership` helper to prevent cross-tenant access
   - **API Endpoints**: 
     - Gallery: GET /api/client/gallery (job/shoot/image data), GET /api/image/:id (stream images), GET /api/download/image/:id (download with headers)
     - Favorites: POST /api/image/:id/favorite (toggle), GET /api/favorites (user's favorited image IDs)
-    - Comments: POST /api/image/:id/comment (add), GET /api/image/:id/comments (list with user info)
+    - Comments: POST /api/image/:id/comment with body {comment: string, altText?: string} (add comment with optional alt text), GET /api/image/:id/comments (list with user info and alt text)
     - Bulk: GET /api/download/favorites (ZIP of all favorites with per-image authorization)
-  - **Database Schema**: `imageFavorites` table (userId, editedImageId, createdAt) and `imageComments` table (userId, editedImageId, commentText, createdAt) with foreign keys and cascade deletes
+  - **Database Schema**: `imageFavorites` table (userId, editedImageId, createdAt) and `imageComments` table (userId, editedImageId, comment, altText, createdAt) with foreign keys and cascade deletes. altText field is optional and used for SEO/accessibility purposes
   - **Object Storage**: Images served directly from object storage with authorization checks, proper caching headers
   - **Security**: Job ownership verification before streaming images, `verifyImageOwnership` helper validates image→shoot→job→user chain before all favorite/comment operations, unauthenticated users redirected to login via useEffect
 - **Development Server**: Express + Vite middleware for development with HMR, proxied API requests to the Hono backend.
