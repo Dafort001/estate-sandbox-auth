@@ -14,6 +14,7 @@ import OrderForm from "@/pages/order-form";
 import Imprint from "@/pages/imprint";
 import AGB from "@/pages/agb";
 import Contact from "@/pages/contact";
+import Pricing from "@/pages/pricing";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/impressum" component={Imprint} />
       <Route path="/agb" component={AGB} />
       <Route path="/kontakt" component={Contact} />
+      <Route path="/preise" component={Pricing} />
       <Route component={NotFound} />
     </Switch>
   );
