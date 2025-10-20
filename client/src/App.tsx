@@ -22,6 +22,10 @@ import Preisliste from "@/pages/preisliste";
 import Booking from "@/pages/booking";
 import BookingConfirmation from "@/pages/booking-confirmation";
 import Galerie from "@/pages/galerie";
+import Datenschutz from "@/pages/datenschutz";
+import KontaktFormular from "@/pages/kontakt-formular";
+import About from "@/pages/about";
+import FAQ from "@/pages/faq";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,6 +42,10 @@ function Router() {
       <Route path="/impressum" component={Imprint} />
       <Route path="/agb" component={AGB} />
       <Route path="/kontakt" component={Contact} />
+      <Route path="/datenschutz" component={Datenschutz} />
+      <Route path="/kontakt-formular" component={KontaktFormular} />
+      <Route path="/about" component={About} />
+      <Route path="/faq" component={FAQ} />
       <Route path="/preise" component={Pricing} />
       <Route path="/preisliste" component={Preisliste} />
       <Route path="/buchen" component={Booking} />
