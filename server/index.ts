@@ -623,6 +623,83 @@ app.patch("/api/orders/:id/status", async (c) => {
   }
 });
 
+// ========== Booking Routes ==========
+
+// POST /api/bookings - Create new booking (authenticated users only)
+app.post("/api/bookings", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { propertyName, propertyAddress, propertyType, preferredDate, preferredTime, specialRequirements, serviceSelections } = body;
+
+    if (!propertyName || !propertyAddress) {
+      return c.json({ error: "Property name and address are required" }, 400);
+    }
+
+    if (!serviceSelections || Object.keys(serviceSelections).length === 0) {
+      return c.json({ error: "At least one service must be selected" }, 400);
+    }
+
+    // Calculate total net price from service selections
+    let totalNetPrice = 0;
+    const allServices = await storage.getAllServices();
+    
+    for (const [serviceId, quantity] of Object.entries(serviceSelections)) {
+      if (typeof quantity === 'number' && quantity > 0) {
+        const service = allServices.find(s => s.id === serviceId);
+        if (service && service.netPrice) {
+          totalNetPrice += service.netPrice * quantity;
+        }
+      }
+    }
+
+    const result = await storage.createBooking(authUser.user.id, {
+      propertyName,
+      propertyAddress,
+      propertyType,
+      preferredDate,
+      preferredTime,
+      specialRequirements,
+      totalNetPrice,
+      serviceSelections,
+    });
+
+    return c.json(result, 201);
+  } catch (error) {
+    console.error("Create booking error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/bookings - Get bookings (role-based: admins get all, clients get their own)
+app.get("/api/bookings", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    let bookings;
+    
+    if (authUser.user.role === "admin") {
+      bookings = await storage.getAllBookings();
+    } else {
+      bookings = await storage.getUserBookings(authUser.user.id);
+    }
+
+    return c.json({ bookings });
+  } catch (error) {
+    console.error("Get bookings error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // ========== Sprint 1: Photo Workflow Routes ==========
 
 // Helper to ensure demo user exists

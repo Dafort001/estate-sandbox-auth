@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -114,6 +114,21 @@ export interface IStorage {
   
   // Service operations
   getAllServices(): Promise<Service[]>;
+  
+  // Booking operations
+  createBooking(userId: string, bookingData: {
+    propertyName: string;
+    propertyAddress: string;
+    propertyType?: string;
+    preferredDate?: string;
+    preferredTime?: string;
+    specialRequirements?: string;
+    totalNetPrice: number;
+    serviceSelections: Record<string, number>;
+  }): Promise<{ booking: Booking; items: BookingItem[] }>;
+  getBooking(id: string): Promise<Booking | undefined>;
+  getUserBookings(userId: string): Promise<Booking[]>;
+  getAllBookings(): Promise<Booking[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -596,6 +611,79 @@ export class DatabaseStorage implements IStorage {
 
   async getAllServices(): Promise<Service[]> {
     return await db.select().from(services).where(eq(services.isActive, "true")).orderBy(services.serviceCode);
+  }
+
+  async createBooking(userId: string, bookingData: {
+    propertyName: string;
+    propertyAddress: string;
+    propertyType?: string;
+    preferredDate?: string;
+    preferredTime?: string;
+    specialRequirements?: string;
+    totalNetPrice: number;
+    serviceSelections: Record<string, number>;
+  }): Promise<{ booking: Booking; items: BookingItem[] }> {
+    const bookingId = randomUUID();
+    const timestamp = Date.now();
+
+    const [booking] = await db
+      .insert(bookings)
+      .values({
+        id: bookingId,
+        userId,
+        propertyName: bookingData.propertyName,
+        propertyAddress: bookingData.propertyAddress,
+        propertyType: bookingData.propertyType || null,
+        preferredDate: bookingData.preferredDate || null,
+        preferredTime: bookingData.preferredTime || null,
+        specialRequirements: bookingData.specialRequirements || null,
+        totalNetPrice: bookingData.totalNetPrice,
+        status: "pending",
+        createdAt: timestamp,
+      })
+      .returning();
+
+    const items: BookingItem[] = [];
+    
+    for (const [serviceId, quantity] of Object.entries(bookingData.serviceSelections)) {
+      if (quantity > 0) {
+        const service = await db.select().from(services).where(eq(services.id, serviceId)).limit(1);
+        if (service.length > 0 && service[0].netPrice) {
+          const unitPrice = service[0].netPrice;
+          const totalPrice = unitPrice * quantity;
+          
+          const [item] = await db
+            .insert(bookingItems)
+            .values({
+              id: randomUUID(),
+              bookingId,
+              serviceId,
+              quantity,
+              unitPrice,
+              totalPrice,
+              createdAt: timestamp,
+            })
+            .returning();
+          
+          items.push(item);
+        }
+      }
+    }
+
+    return { booking, items };
+  }
+
+  async getBooking(id: string): Promise<Booking | undefined> {
+    const [booking] = await db.select().from(bookings).where(eq(bookings.id, id));
+    return booking || undefined;
+  }
+
+  async getUserBookings(userId: string): Promise<Booking[]> {
+    return await db.select().from(bookings).where(eq(bookings.userId, userId)).orderBy(desc(bookings.createdAt));
+  }
+
+  async getAllBookings(): Promise<Booking[]> {
+    return await db.select().from(bookings).orderBy(desc(bookings.createdAt));
   }
 }
 
