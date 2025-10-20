@@ -156,7 +156,7 @@ export default function Dashboard() {
             <Link href="/gallery">
               <Button variant="ghost" data-testid="button-gallery">
                 <ImageIcon className="mr-2 h-4 w-4" />
-                Galerie
+                Portfolio
               </Button>
             </Link>
             <Button
