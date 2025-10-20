@@ -123,6 +123,21 @@ export const editedImages = pgTable("edited_images", {
   rejectedAt: bigint("rejected_at", { mode: "number" }),
 });
 
+export const imageFavorites = pgTable("image_favorites", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  imageId: varchar("image_id").notNull().references(() => editedImages.id, { onDelete: "cascade" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const imageComments = pgTable("image_comments", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  imageId: varchar("image_id").notNull().references(() => editedImages.id, { onDelete: "cascade" }),
+  comment: text("comment").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 export const services = pgTable("services", {
   id: varchar("id").primaryKey(),
   serviceCode: varchar("service_code", { length: 10 }).notNull().unique(), // F10, D04, V30, etc.
@@ -168,6 +183,8 @@ export const usersRelations = relations(users, ({ many }) => ({
   passwordResetTokens: many(passwordResetTokens),
   orders: many(orders),
   jobs: many(jobs),
+  imageFavorites: many(imageFavorites),
+  imageComments: many(imageComments),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -244,7 +261,7 @@ export const editorTokensRelations = relations(editorTokens, ({ one }) => ({
   }),
 }));
 
-export const editedImagesRelations = relations(editedImages, ({ one }) => ({
+export const editedImagesRelations = relations(editedImages, ({ one, many }) => ({
   shoot: one(shoots, {
     fields: [editedImages.shootId],
     references: [shoots.id],
@@ -252,6 +269,30 @@ export const editedImagesRelations = relations(editedImages, ({ one }) => ({
   stack: one(stacks, {
     fields: [editedImages.stackId],
     references: [stacks.id],
+  }),
+  favorites: many(imageFavorites),
+  comments: many(imageComments),
+}));
+
+export const imageFavoritesRelations = relations(imageFavorites, ({ one }) => ({
+  user: one(users, {
+    fields: [imageFavorites.userId],
+    references: [users.id],
+  }),
+  image: one(editedImages, {
+    fields: [imageFavorites.imageId],
+    references: [editedImages.id],
+  }),
+}));
+
+export const imageCommentsRelations = relations(imageComments, ({ one }) => ({
+  user: one(users, {
+    fields: [imageComments.userId],
+    references: [users.id],
+  }),
+  image: one(editedImages, {
+    fields: [imageComments.imageId],
+    references: [editedImages.id],
   }),
 }));
 
@@ -297,6 +338,10 @@ export type EditorToken = typeof editorTokens.$inferSelect;
 export type InsertEditorToken = typeof editorTokens.$inferInsert;
 export type EditedImage = typeof editedImages.$inferSelect;
 export type InsertEditedImage = typeof editedImages.$inferInsert;
+export type ImageFavorite = typeof imageFavorites.$inferSelect;
+export type InsertImageFavorite = typeof imageFavorites.$inferInsert;
+export type ImageComment = typeof imageComments.$inferSelect;
+export type InsertImageComment = typeof imageComments.$inferInsert;
 export type Service = typeof services.$inferSelect;
 export type InsertService = typeof services.$inferInsert;
 export type Booking = typeof bookings.$inferSelect;
