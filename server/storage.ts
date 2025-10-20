@@ -89,7 +89,7 @@ export interface IStorage {
   updateImageRenamedFilename(id: string, renamedFilename: string): Promise<void>;
   
   // Workflow operations - Editor Tokens
-  createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number): Promise<EditorToken>;
+  createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number, filePath?: string): Promise<EditorToken>;
   getEditorToken(token: string): Promise<EditorToken | undefined>;
   markEditorTokenUsed(token: string): Promise<void>;
   
@@ -505,7 +505,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Editor Token operations
-  async createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number): Promise<EditorToken> {
+  async createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number, filePath?: string): Promise<EditorToken> {
     const id = randomUUID();
     const [editorToken] = await db
       .insert(editorTokens)
@@ -514,6 +514,7 @@ export class DatabaseStorage implements IStorage {
         shootId,
         token,
         tokenType,
+        filePath: filePath || null,
         expiresAt,
         createdAt: Date.now(),
       })

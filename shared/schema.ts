@@ -99,6 +99,7 @@ export const editorTokens = pgTable("editor_tokens", {
   shootId: varchar("shoot_id").notNull().references(() => shoots.id, { onDelete: "cascade" }),
   token: text("token").notNull().unique(),
   tokenType: varchar("token_type", { length: 20 }).notNull(), // 'download' or 'upload'
+  filePath: text("file_path"), // Optional: specific file path for download tokens
   expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   usedAt: bigint("used_at", { mode: "number" }),

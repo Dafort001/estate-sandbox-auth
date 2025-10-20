@@ -14,10 +14,11 @@ import { scheduleEditorReturnProcessing } from "./backgroundQueue";
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
 import { processUploadedFiles } from "./uploadHandler";
 import { processEditorReturnZip } from "./zipProcessor";
+import { generateFinalHandoff } from "./finalHandoff";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
-import { uploadFile } from "./objectStorage";
+import { uploadFile, downloadFile } from "./objectStorage";
 
 const app = new Hono();
 
@@ -1184,6 +1185,87 @@ app.put("/api/edited-images/:id/reject", async (c) => {
   } catch (error) {
     console.error("Error rejecting image:", error);
     return c.json({ error: "Failed to reject image" }, 500);
+  }
+});
+
+// POST /api/projects/:jobId/shoots/:shootId/generate-handoff - Generate final client handoff
+app.post("/api/projects/:jobId/shoots/:shootId/generate-handoff", async (c) => {
+  try {
+    const jobId = c.req.param("jobId");
+    const shootId = c.req.param("shootId");
+    const body = await c.req.json().catch(() => ({}));
+    const { version } = body;
+    
+    console.log(`📦 Generating final handoff for job ${jobId}, shoot ${shootId}${version ? `, version ${version}` : ''}`);
+    
+    const result = await generateFinalHandoff(storage, jobId, shootId, version);
+    
+    if (!result.success) {
+      return c.json({ error: result.error }, 400);
+    }
+    
+    return c.json({
+      success: true,
+      downloadUrl: result.downloadUrl,
+      manifest: result.manifest,
+      totalImages: result.totalImages,
+    });
+  } catch (error) {
+    console.error("Error generating handoff:", error);
+    return c.json({ error: "Failed to generate handoff package" }, 500);
+  }
+});
+
+// GET /api/handoff/download/:token - Download handoff package
+app.get("/api/handoff/download/:token", async (c) => {
+  try {
+    const token = c.req.param("token");
+    
+    // Verify token exists
+    const editorToken = await storage.getEditorToken(token);
+    if (!editorToken) {
+      return c.json({ error: "Invalid or expired download token" }, 401);
+    }
+    
+    // Verify token type
+    if (editorToken.tokenType !== 'download') {
+      return c.json({ error: "Invalid token type" }, 401);
+    }
+    
+    // Check if token has expired
+    if (editorToken.expiresAt < Date.now()) {
+      return c.json({ error: "Download token has expired" }, 401);
+    }
+    
+    // Check if token has already been used
+    if (editorToken.usedAt) {
+      return c.json({ error: "Download token has already been used" }, 401);
+    }
+    
+    // Verify token has an associated file path
+    if (!editorToken.filePath) {
+      return c.json({ error: "Invalid token: no file path associated" }, 400);
+    }
+    
+    // Mark token as used BEFORE streaming the file
+    await storage.markEditorTokenUsed(token);
+    
+    // Download file from object storage
+    const downloadResult = await downloadFile(editorToken.filePath);
+    
+    if (!downloadResult.ok || !downloadResult.value) {
+      return c.json({ error: "File not found" }, 404);
+    }
+    
+    // Return file
+    const filename = editorToken.filePath.split('/').pop() || 'download.zip';
+    return c.body(downloadResult.value, 200, {
+      'Content-Type': 'application/zip',
+      'Content-Disposition': `attachment; filename="${filename}"`,
+    });
+  } catch (error) {
+    console.error("Error downloading handoff:", error);
+    return c.json({ error: "Failed to download file" }, 500);
   }
 });
 
