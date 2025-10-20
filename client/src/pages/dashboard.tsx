@@ -135,6 +135,12 @@ export default function Dashboard() {
                 Workflow Jobs
               </Button>
             </Link>
+            <Link href="/preisliste">
+              <Button variant="ghost" data-testid="button-preisliste">
+                <ListOrdered className="mr-2 h-4 w-4" />
+                Preisliste
+              </Button>
+            </Link>
             <Link href="/gallery">
               <Button variant="ghost" data-testid="button-gallery">
                 <ImageIcon className="mr-2 h-4 w-4" />

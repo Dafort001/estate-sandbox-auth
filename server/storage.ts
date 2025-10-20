@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -111,6 +111,9 @@ export interface IStorage {
   getEditedImagesByShoot(shootId: string): Promise<any[]>;
   getStacksByShoot(shootId: string): Promise<Stack[]>;
   updateEditedImageApprovalStatus(id: string, status: string, timestampField?: string): Promise<void>;
+  
+  // Service operations
+  getAllServices(): Promise<Service[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -589,6 +592,10 @@ export class DatabaseStorage implements IStorage {
       updates[timestampField] = Date.now();
     }
     await db.update(editedImages).set(updates).where(eq(editedImages.id, id));
+  }
+
+  async getAllServices(): Promise<Service[]> {
+    return await db.select().from(services).where(eq(services.isActive, "true")).orderBy(services.serviceCode);
   }
 }
 

@@ -329,6 +329,23 @@ app.get("/api/me", async (c) => {
   }
 });
 
+// GET /api/services - Get all active services for price list
+app.get("/api/services", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const services = await storage.getAllServices();
+    return c.json(services);
+  } catch (error) {
+    console.error("Get services error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // POST /api/token/refresh - Refresh access token using refresh token
 app.post("/api/token/refresh", tokenRefreshLimiter, async (c) => {
   try {
