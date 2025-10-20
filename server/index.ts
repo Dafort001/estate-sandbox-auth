@@ -720,6 +720,146 @@ app.get("/api/client/gallery", async (c) => {
   }
 });
 
+// GET /api/image/:id - Serve image by ID (authenticated)
+app.get("/api/image/:id", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const imageId = c.req.param("id");
+    const image = await storage.getEditedImage(imageId);
+
+    if (!image) {
+      return c.json({ error: "Image not found" }, 404);
+    }
+
+    // Verify the image belongs to the user
+    const shoot = await storage.getShoot(image.shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+
+    const job = await storage.getJob(shoot.jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+
+    // Admin can view all, clients can only view their own
+    if (authUser.user.role !== "admin" && job.userId !== authUser.user.id) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    // Get image from object storage
+    const { Client } = await import("@replit/object-storage");
+    const objectStorage = new Client();
+    
+    try {
+      const result = await objectStorage.downloadAsBytes(image.filePath);
+      
+      if (!result.ok) {
+        console.error("Error fetching image from storage:", result.error);
+        return c.json({ error: "Image not found in storage" }, 404);
+      }
+
+      const imageData = Array.isArray(result.value) ? result.value[0] : result.value;
+      
+      // Determine content type
+      let contentType = "image/jpeg";
+      if (image.filename.toLowerCase().endsWith(".png")) {
+        contentType = "image/png";
+      } else if (image.filename.toLowerCase().endsWith(".webp")) {
+        contentType = "image/webp";
+      }
+
+      return new Response(imageData, {
+        headers: {
+          "Content-Type": contentType,
+          "Cache-Control": "public, max-age=31536000",
+        },
+      });
+    } catch (storageError) {
+      console.error("Error fetching image from storage:", storageError);
+      return c.json({ error: "Image not found in storage" }, 404);
+    }
+  } catch (error) {
+    console.error("Get image error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/download/image/:id - Download image by ID (authenticated)
+app.get("/api/download/image/:id", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const imageId = c.req.param("id");
+    const image = await storage.getEditedImage(imageId);
+
+    if (!image) {
+      return c.json({ error: "Image not found" }, 404);
+    }
+
+    // Verify the image belongs to the user
+    const shoot = await storage.getShoot(image.shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+
+    const job = await storage.getJob(shoot.jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+
+    // Admin can download all, clients can only download their own
+    if (authUser.user.role !== "admin" && job.userId !== authUser.user.id) {
+      return c.json({ error: "Forbidden" }, 403);
+    }
+
+    // Get image from object storage
+    const { Client } = await import("@replit/object-storage");
+    const objectStorage = new Client();
+    
+    try {
+      const result = await objectStorage.downloadAsBytes(image.filePath);
+      
+      if (!result.ok) {
+        console.error("Error fetching image from storage:", result.error);
+        return c.json({ error: "Image not found in storage" }, 404);
+      }
+
+      const imageData = Array.isArray(result.value) ? result.value[0] : result.value;
+      
+      // Determine content type
+      let contentType = "image/jpeg";
+      if (image.filename.toLowerCase().endsWith(".png")) {
+        contentType = "image/png";
+      } else if (image.filename.toLowerCase().endsWith(".webp")) {
+        contentType = "image/webp";
+      }
+
+      return new Response(imageData, {
+        headers: {
+          "Content-Type": contentType,
+          "Content-Disposition": `attachment; filename="${image.filename}"`,
+        },
+      });
+    } catch (storageError) {
+      console.error("Error fetching image from storage:", storageError);
+      return c.json({ error: "Image not found in storage" }, 404);
+    }
+  } catch (error) {
+    console.error("Download image error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // ========== Sprint 1: Photo Workflow Routes ==========
 
 // Helper to ensure demo user exists

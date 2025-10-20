@@ -147,6 +147,12 @@ export default function Dashboard() {
                 Buchen
               </Button>
             </Link>
+            <Link href="/galerie">
+              <Button variant="ghost" data-testid="button-galerie">
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Galerie
+              </Button>
+            </Link>
             <Link href="/gallery">
               <Button variant="ghost" data-testid="button-gallery">
                 <ImageIcon className="mr-2 h-4 w-4" />
