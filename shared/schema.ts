@@ -123,6 +123,44 @@ export const editedImages = pgTable("edited_images", {
   rejectedAt: bigint("rejected_at", { mode: "number" }),
 });
 
+export const services = pgTable("services", {
+  id: varchar("id").primaryKey(),
+  serviceCode: varchar("service_code", { length: 10 }).notNull().unique(), // F10, D04, V30, etc.
+  category: varchar("category", { length: 50 }).notNull(), // 'photography', 'drone', 'video', '360tour', 'staging', 'optimization', 'travel'
+  name: varchar("name", { length: 255 }).notNull(),
+  description: text("description"),
+  netPrice: bigint("net_price", { mode: "number" }), // Price in cents (null for "auf Anfrage")
+  priceNote: text("price_note"), // "€0.80/km", "je Raumgröße", etc.
+  notes: text("notes"),
+  isActive: varchar("is_active", { length: 5 }).notNull().default("true"), // 'true' or 'false'
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+export const bookings = pgTable("bookings", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  propertyName: varchar("property_name", { length: 255 }).notNull(),
+  propertyAddress: text("property_address").notNull(),
+  propertyType: varchar("property_type", { length: 100 }), // 'Wohnung', 'Haus', 'Gewerbe'
+  preferredDate: varchar("preferred_date", { length: 50 }),
+  preferredTime: varchar("preferred_time", { length: 50 }),
+  specialRequirements: text("special_requirements"),
+  totalNetPrice: bigint("total_net_price", { mode: "number" }).notNull(), // Total in cents
+  status: varchar("status", { length: 50 }).notNull().default("pending"), // 'pending', 'confirmed', 'completed', 'cancelled'
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  confirmedAt: bigint("confirmed_at", { mode: "number" }),
+});
+
+export const bookingItems = pgTable("booking_items", {
+  id: varchar("id").primaryKey(),
+  bookingId: varchar("booking_id").notNull().references(() => bookings.id, { onDelete: "cascade" }),
+  serviceId: varchar("service_id").notNull().references(() => services.id, { onDelete: "restrict" }),
+  quantity: bigint("quantity", { mode: "number" }).notNull().default(1),
+  unitPrice: bigint("unit_price", { mode: "number" }).notNull(), // Price per unit in cents
+  totalPrice: bigint("total_price", { mode: "number" }).notNull(), // quantity * unitPrice in cents
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
@@ -217,6 +255,25 @@ export const editedImagesRelations = relations(editedImages, ({ one }) => ({
   }),
 }));
 
+export const bookingsRelations = relations(bookings, ({ one, many }) => ({
+  user: one(users, {
+    fields: [bookings.userId],
+    references: [users.id],
+  }),
+  bookingItems: many(bookingItems),
+}));
+
+export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
+  booking: one(bookings, {
+    fields: [bookingItems.bookingId],
+    references: [bookings.id],
+  }),
+  service: one(services, {
+    fields: [bookingItems.serviceId],
+    references: [services.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -240,6 +297,12 @@ export type EditorToken = typeof editorTokens.$inferSelect;
 export type InsertEditorToken = typeof editorTokens.$inferInsert;
 export type EditedImage = typeof editedImages.$inferSelect;
 export type InsertEditedImage = typeof editedImages.$inferInsert;
+export type Service = typeof services.$inferSelect;
+export type InsertService = typeof services.$inferInsert;
+export type Booking = typeof bookings.$inferSelect;
+export type InsertBooking = typeof bookings.$inferInsert;
+export type BookingItem = typeof bookingItems.$inferSelect;
+export type InsertBookingItem = typeof bookingItems.$inferInsert;
 
 // Validation Schemas
 export const signupSchema = z.object({
