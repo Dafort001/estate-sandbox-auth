@@ -4,11 +4,14 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
-import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, createOrderSchema, type UserResponse } from "@shared/schema";
+import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, createOrderSchema, createJobSchema, initUploadSchema, assignRoomTypeSchema, type UserResponse } from "@shared/schema";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { generateTokenPair, verifyAccessToken, extractBearerToken } from "./jwt";
-import { randomUUID } from "crypto";
+import { randomUUID, randomBytes } from "crypto";
 import { rateLimiter } from "hono-rate-limiter";
+import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
+import { scheduleEditorReturnProcessing } from "./backgroundQueue";
+import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
 
 const app = new Hono();
 
@@ -593,6 +596,260 @@ app.patch("/api/orders/:id/status", async (c) => {
   } catch (error) {
     console.error("Update order status error:", error);
     return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// ========== Sprint 1: Photo Workflow Routes ==========
+
+// Helper to ensure demo user exists
+async function ensureDemoUser() {
+  const demoEmail = "demo@pix.immo";
+  let demoUser = await storage.getUserByEmail(demoEmail);
+  
+  if (!demoUser) {
+    // Create demo user for development (no password hash for demo)
+    demoUser = await storage.createUser(demoEmail, "demo-password-hash", "admin");
+    console.log("✓ Demo user created:", demoEmail);
+  }
+  
+  return demoUser;
+}
+
+// POST /api/jobs - Create a new job
+app.post("/api/jobs", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validation = createJobSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const demoUser = await ensureDemoUser();
+    const { propertyName, propertyAddress } = validation.data;
+    const job = await storage.createJob(demoUser.id, propertyName, propertyAddress);
+    
+    return c.json(job, 201);
+  } catch (error) {
+    console.error("Error creating job:", error);
+    return c.json({ error: "Failed to create job" }, 500);
+  }
+});
+
+// GET /api/jobs - Get all jobs
+app.get("/api/jobs", async (c) => {
+  try {
+    const jobs = await storage.getAllJobs();
+    return c.json(jobs);
+  } catch (error) {
+    console.error("Error getting jobs:", error);
+    return c.json({ error: "Failed to get jobs" }, 500);
+  }
+});
+
+// GET /api/jobs/:id - Get single job
+app.get("/api/jobs/:id", async (c) => {
+  try {
+    const jobId = c.req.param("id");
+    const job = await storage.getJob(jobId);
+    
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    return c.json(job);
+  } catch (error) {
+    console.error("Error getting job:", error);
+    return c.json({ error: "Failed to get job" }, 500);
+  }
+});
+
+// POST /api/uploads/init - Initialize upload
+app.post("/api/uploads/init", async (c) => {
+  try {
+    const body = await c.req.json();
+    const validation = initUploadSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const { jobNumber } = validation.data;
+    
+    // Verify job exists
+    const job = await storage.getJobByNumber(jobNumber);
+    if (!job) {
+      return c.json({ error: "Job not found with this job number" }, 404);
+    }
+    
+    // Create shoot
+    const shoot = await storage.createShoot(job.id);
+    
+    return c.json({
+      shootId: shoot.id,
+      shootCode: shoot.shootCode,
+      jobId: job.id,
+      jobNumber: job.jobNumber,
+    });
+  } catch (error) {
+    console.error("Error initializing upload:", error);
+    return c.json({ error: "Failed to initialize upload" }, 500);
+  }
+});
+
+// GET /api/shoots/:id - Get shoot details
+app.get("/api/shoots/:id", async (c) => {
+  try {
+    const shootId = c.req.param("id");
+    const shoot = await storage.getShoot(shootId);
+    
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    return c.json(shoot);
+  } catch (error) {
+    console.error("Error getting shoot:", error);
+    return c.json({ error: "Failed to get shoot" }, 500);
+  }
+});
+
+// GET /api/shoots/:id/stacks - Get stacks for shoot
+app.get("/api/shoots/:id/stacks", async (c) => {
+  try {
+    const shootId = c.req.param("id");
+    const stacks = await storage.getShootStacks(shootId);
+    
+    return c.json(stacks);
+  } catch (error) {
+    console.error("Error getting stacks:", error);
+    return c.json({ error: "Failed to get stacks" }, 500);
+  }
+});
+
+// PUT /api/stacks/:id/room-type - Assign room type to stack
+app.put("/api/stacks/:id/room-type", async (c) => {
+  try {
+    const stackId = c.req.param("id");
+    const body = await c.req.json();
+    const validation = assignRoomTypeSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const { roomType } = validation.data;
+    
+    // Update room type
+    await storage.updateStackRoomType(stackId, roomType);
+    
+    // Get updated stack
+    const stack = await storage.getStack(stackId);
+    
+    return c.json(stack);
+  } catch (error) {
+    console.error("Error updating room type:", error);
+    return c.json({ error: "Failed to update room type" }, 500);
+  }
+});
+
+// POST /api/projects/:jobId/handoff/:shootId - Generate handoff package
+app.post("/api/projects/:jobId/handoff/:shootId", async (c) => {
+  try {
+    const jobId = c.req.param("jobId");
+    const shootId = c.req.param("shootId");
+    
+    // Verify job and shoot exist
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    const shoot = await storage.getShoot(shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    // Generate handoff package
+    const packageResult = await generateHandoffPackage(jobId, shootId);
+    if (!packageResult.ok) {
+      return c.json({ error: packageResult.error || "Failed to generate handoff package" }, 500);
+    }
+    
+    // Generate download token
+    const downloadTokenResult = await generateHandoffToken(shootId);
+    if (!downloadTokenResult.ok) {
+      return c.json({ error: downloadTokenResult.error || "Failed to generate download token" }, 500);
+    }
+    
+    // Generate upload token
+    const uploadToken = randomBytes(32).toString('hex');
+    const expiresAt = Date.now() + (36 * 60 * 60 * 1000); // 36 hours
+    await storage.createEditorToken(shootId, 'upload', uploadToken, expiresAt);
+    
+    // Send notification
+    const downloadUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/api/handoff/download/${downloadTokenResult.token}`;
+    await notifyHandoffReady({
+      email: "demo@pix.immo",
+      jobNumber: job.jobNumber,
+      shootCode: shoot.shootCode,
+      downloadUrl,
+    });
+    
+    return c.json({
+      downloadUrl: `/api/handoff/download/${downloadTokenResult.token}`,
+      uploadToken: uploadToken,
+      expiresAt: downloadTokenResult.expiresAt,
+    });
+  } catch (error) {
+    console.error("Error generating handoff package:", error);
+    return c.json({ error: "Failed to generate handoff package" }, 500);
+  }
+});
+
+// GET /api/handoff/download/:token - Download handoff package
+app.get("/api/handoff/download/:token", async (c) => {
+  try {
+    const token = c.req.param("token");
+    
+    // Verify token
+    const editorToken = await storage.getEditorToken(token);
+    if (!editorToken || editorToken.tokenType !== 'download') {
+      return c.json({ error: "Invalid or expired token" }, 401);
+    }
+    
+    // Get handoff package path
+    const shoot = await storage.getShoot(editorToken.shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    const job = await storage.getJob(shoot.jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    // Mark token as used
+    await storage.markEditorTokenUsed(token);
+    
+    // TODO: Stream the ZIP file from object storage
+    // For now, return success response
+    return c.json({ 
+      message: "Download would start here",
+      note: "File streaming from object storage needs Hono-compatible implementation"
+    });
+  } catch (error) {
+    console.error("Error downloading handoff package:", error);
+    return c.json({ error: "Failed to download handoff package" }, 500);
   }
 });
 

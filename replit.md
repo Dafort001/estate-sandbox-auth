@@ -23,13 +23,17 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
 - **Object Storage**: Replit Object Storage (Google Cloud Storage) for RAW images, edited files, and handoff packages. Structure: `/projects/{job_id}/raw/{shoot_id}/`, `/projects/{job_id}/edits/{shoot_id}/final/`, `/projects/{job_id}/handoff/`, `/projects/{job_id}/meta/`.
 - **Authentication**: Custom session-based authentication using HTTP-only cookies and Scrypt password hashing. The design is Lucia-compatible, with optional JWT/Bearer token support for API access. Features include password reset flows with secure one-time tokens and rate limiting on all authentication endpoints.
 - **Order Management**: API endpoints for creating, viewing, and updating property photography orders, with role-based authorization.
-- **Photo Workflow System (Sprint 1)**:
+- **Photo Workflow System (Sprint 1 - IMPLEMENTED)**:
   - **Jobs**: Each property photography project gets a unique job with `job_number` format `PIX-{timestamp}-{random}`
   - **Shoots**: Photo shoot sessions with 5-character `shoot_code` (first 5 chars of UUID)
-  - **Stacks**: Groups of 3 or 5 bracketed images with room-type assignment
-  - **Images**: RAW files with metadata tracking (EXIF dates, exposure values, file paths)
+  - **Stacks**: Groups of 3 or 5 bracketed images with room-type assignment, automatic grouping by exposure sequence
+  - **Images**: RAW files with metadata tracking (EXIF dates, exposure values, file paths), object storage integration
   - **Editor Tokens**: Secure 36-hour signed tokens for handoff download and editor upload
   - **Filename Convention**: RAW handoff: `{date}-{shootcode}_{room_type}_{index}_g{stack}_e{ev}.{ext}`, Final: `{date}-{shootcode}_{room_type}_{index}_v{ver}.jpg`
+  - **Auto-Stacking**: Intelligent bracketing detection supporting 3-frame and 5-frame exposures with proper sequence ordering
+  - **Handoff Package**: ZIP generation with manifest.json, renamed files per convention, signed download links
+  - **Background Queue**: 60-minute quiet window before processing editor returns (stub implementation)
+  - **Notifications**: Email and SMS alerts for handoff-ready and editor-upload-complete events (stub implementation)
 - **Development Server**: Express + Vite middleware for development with HMR, proxied API requests to the Hono backend.
 - **Production Server**: Hono serves static files and handles API requests, designed for Cloudflare Workers.
 

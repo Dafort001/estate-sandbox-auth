@@ -1,6 +1,7 @@
 import express from "express";
 import { createServer } from "http";
 import { setupVite } from "./vite";
+import { registerRoutes } from "./routes";
 
 const app = express();
 const server = createServer(app);
@@ -11,7 +12,12 @@ async function startDevServer() {
   // Parse JSON body for POST/PUT/PATCH requests
   app.use(express.json());
 
-  // Proxy API requests to the Hono server (running in same process)
+  // Register Sprint 1 workflow routes BEFORE Hono proxy
+  // These routes handle /api/jobs, /api/uploads, etc.
+  await registerRoutes(app);
+
+  // Proxy remaining API requests to the Hono server (running in same process)
+  // This handles auth routes and other Hono-specific endpoints
   app.use("/api", async (req, res, next) => {
     try {
       // Import the Hono app (it's exported from index.ts in development mode)
