@@ -104,6 +104,24 @@ export const editorTokens = pgTable("editor_tokens", {
   usedAt: bigint("used_at", { mode: "number" }),
 });
 
+export const editedImages = pgTable("edited_images", {
+  id: varchar("id").primaryKey(),
+  shootId: varchar("shoot_id").notNull().references(() => shoots.id, { onDelete: "cascade" }),
+  stackId: varchar("stack_id").references(() => stacks.id, { onDelete: "set null" }),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  filePath: text("file_path").notNull(), // Object storage path
+  fileSize: bigint("file_size", { mode: "number" }),
+  version: bigint("version", { mode: "number" }).notNull().default(1), // 1, 2, 3 for revision tracking
+  roomType: varchar("room_type", { length: 50 }),
+  sequenceIndex: bigint("sequence_index", { mode: "number" }), // ordering within room_type
+  clientApprovalStatus: varchar("client_approval_status", { length: 20 }).notNull().default("pending"), // 'pending', 'approved', 'rejected'
+  revisionNotes: text("revision_notes"),
+  aiCaption: text("ai_caption"), // Future: AI-generated caption
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  approvedAt: bigint("approved_at", { mode: "number" }),
+  rejectedAt: bigint("rejected_at", { mode: "number" }),
+});
+
 // Relations
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
@@ -157,6 +175,7 @@ export const shootsRelations = relations(shoots, ({ one, many }) => ({
   stacks: many(stacks),
   images: many(images),
   editorTokens: many(editorTokens),
+  editedImages: many(editedImages),
 }));
 
 export const stacksRelations = relations(stacks, ({ one, many }) => ({
@@ -165,6 +184,7 @@ export const stacksRelations = relations(stacks, ({ one, many }) => ({
     references: [shoots.id],
   }),
   images: many(images),
+  editedImages: many(editedImages),
 }));
 
 export const imagesRelations = relations(images, ({ one }) => ({
@@ -182,6 +202,17 @@ export const editorTokensRelations = relations(editorTokens, ({ one }) => ({
   shoot: one(shoots, {
     fields: [editorTokens.shootId],
     references: [shoots.id],
+  }),
+}));
+
+export const editedImagesRelations = relations(editedImages, ({ one }) => ({
+  shoot: one(shoots, {
+    fields: [editedImages.shootId],
+    references: [shoots.id],
+  }),
+  stack: one(stacks, {
+    fields: [editedImages.stackId],
+    references: [stacks.id],
   }),
 }));
 
@@ -206,6 +237,8 @@ export type Image = typeof images.$inferSelect;
 export type InsertImage = typeof images.$inferInsert;
 export type EditorToken = typeof editorTokens.$inferSelect;
 export type InsertEditorToken = typeof editorTokens.$inferInsert;
+export type EditedImage = typeof editedImages.$inferSelect;
+export type InsertEditedImage = typeof editedImages.$inferInsert;
 
 // Validation Schemas
 export const signupSchema = z.object({
