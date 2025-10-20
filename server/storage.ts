@@ -398,7 +398,20 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateStackRoomType(id: string, roomType: string): Promise<void> {
-    await db.update(stacks).set({ roomType }).where(eq(stacks.id, id));
+    // Get the stack to find its shootId
+    const stack = await this.getStack(id);
+    if (!stack) {
+      throw new Error("Stack not found");
+    }
+    
+    // Get the new sequence index for the new room type
+    const newSequenceIndex = await this.getNextSequenceIndexForRoom(stack.shootId, roomType);
+    
+    // Update room type and sequence index together
+    await db.update(stacks).set({ 
+      roomType, 
+      sequenceIndex: newSequenceIndex 
+    }).where(eq(stacks.id, id));
   }
 
   async updateStackFrameCount(id: string, frameCount: number): Promise<void> {

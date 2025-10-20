@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { createJobSchema, initUploadSchema, assignRoomTypeSchema, type InitUploadResponse } from "@shared/schema";
 import { z } from "zod";
 import { randomBytes } from "crypto";
+import { upload, processUploadedFiles } from "./uploadHandler";
 
 // Middleware to validate request body with Zod
 function validateBody(schema: z.ZodSchema) {
@@ -22,16 +23,31 @@ function validateBody(schema: z.ZodSchema) {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Ensure demo user exists for development
+  async function ensureDemoUser() {
+    const demoEmail = "demo@pix.immo";
+    let demoUser = await storage.getUserByEmail(demoEmail);
+    
+    if (!demoUser) {
+      // Create demo user for development
+      demoUser = await storage.createUser(demoEmail, "demo-password-hash", "admin");
+      console.log("✓ Demo user created:", demoEmail);
+    }
+    
+    return demoUser;
+  }
+
   // Workflow API Routes
   
   // POST /api/jobs - Create a new job with job_number generation
   app.post("/api/jobs", validateBody(createJobSchema), async (req: Request, res: Response) => {
     try {
-      // TODO: Get userId from session/auth middleware
-      const userId = "temp-user-id"; // Placeholder - replace with actual auth
+      // TODO: Get userId from session/auth middleware when auth is implemented
+      // For now, use demo user
+      const demoUser = await ensureDemoUser();
       
       const { propertyName, propertyAddress } = req.body;
-      const job = await storage.createJob(userId, propertyName, propertyAddress);
+      const job = await storage.createJob(demoUser.id, propertyName, propertyAddress);
       
       res.status(201).json(job);
     } catch (error) {
@@ -43,13 +59,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/jobs - Get all jobs (admin) or user's jobs
   app.get("/api/jobs", async (req: Request, res: Response) => {
     try {
-      // TODO: Get userId and role from session/auth middleware
-      const userId = "temp-user-id"; // Placeholder
-      const role = "admin"; // Placeholder
-      
-      const jobs = role === "admin" 
-        ? await storage.getAllJobs()
-        : await storage.getUserJobs(userId);
+      // TODO: Get userId and role from session/auth middleware when auth is implemented
+      // For now, show all jobs (demo user is admin)
+      const jobs = await storage.getAllJobs();
       
       res.json(jobs);
     } catch (error) {
@@ -194,6 +206,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error generating handoff package:", error);
       res.status(500).json({ error: "Failed to generate handoff package" });
+    }
+  });
+  
+  // POST /api/shoots/:id/upload - Upload RAW images for a shoot
+  app.post("/api/shoots/:id/upload", upload.array("files"), async (req: Request, res: Response) => {
+    try {
+      const shootId = req.params.id;
+      const files = req.files as Express.Multer.File[];
+      
+      if (!files || files.length === 0) {
+        return res.status(400).json({ error: "No files uploaded" });
+      }
+      
+      // Get shoot to verify it exists and get job ID
+      const shoot = await storage.getShoot(shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+      
+      // Get frame count from request (default to 5)
+      const frameCount = req.body.frameCount === "3" ? 3 : 5;
+      
+      // Process uploaded files
+      const result = await processUploadedFiles(shootId, shoot.jobId, files, frameCount);
+      
+      if (!result.success) {
+        return res.status(500).json({ error: result.error || "Failed to process files" });
+      }
+      
+      res.json({
+        success: true,
+        stackCount: result.stackCount,
+        imageCount: result.imageCount,
+      });
+    } catch (error) {
+      console.error("Error uploading files:", error);
+      res.status(500).json({ error: "Failed to upload files" });
     }
   });
   

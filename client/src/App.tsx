@@ -15,6 +15,8 @@ import Imprint from "@/pages/imprint";
 import AGB from "@/pages/agb";
 import Contact from "@/pages/contact";
 import Pricing from "@/pages/pricing";
+import Intake from "@/pages/intake";
+import Jobs from "@/pages/jobs";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -32,6 +34,8 @@ function Router() {
       <Route path="/agb" component={AGB} />
       <Route path="/kontakt" component={Contact} />
       <Route path="/preise" component={Pricing} />
+      <Route path="/intake" component={Intake} />
+      <Route path="/jobs" component={Jobs} />
       <Route component={NotFound} />
     </Switch>
   );
