@@ -7,8 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, FolderOpen, Calendar, MapPin } from "lucide-react";
-import type { Job } from "@shared/schema";
+import { Plus, FolderOpen, Calendar, MapPin, Image } from "lucide-react";
+import { Link } from "wouter";
+import type { Job, Shoot } from "@shared/schema";
 import {
   Dialog,
   DialogContent,
@@ -17,6 +18,93 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+// Job card component with shoots
+function JobCard({ job }: { job: Job }) {
+  const { data: shoots = [] } = useQuery<Shoot[]>({
+    queryKey: ["/api/jobs", job.id, "shoots"],
+  });
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
+      created: { label: "Erstellt", variant: "outline" },
+      in_progress: { label: "In Bearbeitung", variant: "default" },
+      edited_returned: { label: "Editor fertig", variant: "secondary" },
+      completed: { label: "Abgeschlossen", variant: "secondary" },
+    };
+    const config = variants[status] || variants.created;
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleDateString("de-DE", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
+
+  return (
+    <Card className="p-6" data-testid={`job-card-${job.id}`}>
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex-1">
+          <h3 className="font-medium mb-1">{job.propertyName}</h3>
+          <p className="text-xs text-muted-foreground font-mono">
+            {job.jobNumber}
+          </p>
+        </div>
+        {getStatusBadge(job.status)}
+      </div>
+
+      {job.propertyAddress && (
+        <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground">
+          <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
+          <span className="line-clamp-2">{job.propertyAddress}</span>
+        </div>
+      )}
+
+      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-4">
+        <Calendar className="w-3 h-3" />
+        <span>{formatDate(job.createdAt)}</span>
+      </div>
+
+      {/* Shoots list */}
+      {shoots.length > 0 && (
+        <div className="mb-4 space-y-2">
+          <p className="text-xs font-medium text-muted-foreground">Shoots:</p>
+          {shoots.map((shoot) => (
+            <div key={shoot.id} className="flex items-center justify-between gap-2 text-sm">
+              <span className="font-mono text-xs">{shoot.shootCode}</span>
+              <Link href={`/review/${job.id}/${shoot.id}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  data-testid={`button-review-${shoot.id}`}
+                >
+                  <Image className="w-3 h-3 mr-1" />
+                  Review
+                </Button>
+              </Link>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="pt-4 border-t">
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          data-testid={`button-view-job-${job.id}`}
+        >
+          Details anzeigen
+        </Button>
+      </div>
+    </Card>
+  );
+}
 
 export default function Jobs() {
   const { toast } = useToast();
@@ -62,27 +150,6 @@ export default function Jobs() {
         propertyAddress: propertyAddress.trim() || undefined,
       });
     }
-  };
-
-  const getStatusBadge = (status: string) => {
-    const variants: Record<string, { label: string; variant: "default" | "secondary" | "outline" }> = {
-      created: { label: "Erstellt", variant: "outline" },
-      in_progress: { label: "In Bearbeitung", variant: "default" },
-      edited_returned: { label: "Editor fertig", variant: "secondary" },
-      completed: { label: "Abgeschlossen", variant: "secondary" },
-    };
-    const config = variants[status] || variants.created;
-    return <Badge variant={config.variant}>{config.label}</Badge>;
-  };
-
-  const formatDate = (timestamp: number) => {
-    return new Date(timestamp).toLocaleDateString("de-DE", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
   };
 
   return (
@@ -173,40 +240,7 @@ export default function Jobs() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {jobs.map((job) => (
-              <Card key={job.id} className="p-6" data-testid={`job-card-${job.id}`}>
-                <div className="flex items-start justify-between mb-3">
-                  <div className="flex-1">
-                    <h3 className="font-medium mb-1">{job.propertyName}</h3>
-                    <p className="text-xs text-muted-foreground font-mono">
-                      {job.jobNumber}
-                    </p>
-                  </div>
-                  {getStatusBadge(job.status)}
-                </div>
-
-                {job.propertyAddress && (
-                  <div className="flex items-start gap-2 mb-3 text-sm text-muted-foreground">
-                    <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" />
-                    <span className="line-clamp-2">{job.propertyAddress}</span>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Calendar className="w-3 h-3" />
-                  <span>{formatDate(job.createdAt)}</span>
-                </div>
-
-                <div className="mt-4 pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    data-testid={`button-view-job-${job.id}`}
-                  >
-                    Details anzeigen
-                  </Button>
-                </div>
-              </Card>
+              <JobCard key={job.id} job={job} />
             ))}
           </div>
         )}
