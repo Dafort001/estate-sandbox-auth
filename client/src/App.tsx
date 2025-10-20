@@ -11,6 +11,9 @@ import Gallery from "@/pages/gallery";
 import Blog from "@/pages/blog";
 import BlogPost from "@/pages/blog-post";
 import OrderForm from "@/pages/order-form";
+import Imprint from "@/pages/imprint";
+import AGB from "@/pages/agb";
+import Contact from "@/pages/contact";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -24,6 +27,9 @@ function Router() {
       <Route path="/blog" component={Blog} />
       <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/order" component={OrderForm} />
+      <Route path="/impressum" component={Imprint} />
+      <Route path="/agb" component={AGB} />
+      <Route path="/kontakt" component={Contact} />
       <Route component={NotFound} />
     </Switch>
   );

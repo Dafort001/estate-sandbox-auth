@@ -170,15 +170,21 @@ export default function Home() {
       {/* Footer - appears after scrolling */}
       <footer className="py-6 border-t border-gray-200 flex-shrink-0">
         <div className="flex justify-center items-center gap-6 px-[5vw] text-xs text-gray-500">
-          <a href="#impressum" className="hover:underline" data-testid="link-impressum">
-            Impressum
-          </a>
-          <a href="#datenschutz" className="hover:underline" data-testid="link-datenschutz">
-            Datenschutz
-          </a>
-          <a href="#kontakt" className="hover:underline" data-testid="link-kontakt">
-            Kontakt
-          </a>
+          <Link href="/impressum">
+            <span className="hover:underline cursor-pointer" data-testid="link-impressum">
+              Impressum
+            </span>
+          </Link>
+          <Link href="/agb">
+            <span className="hover:underline cursor-pointer" data-testid="link-agb">
+              AGB & Datenschutz
+            </span>
+          </Link>
+          <Link href="/kontakt">
+            <span className="hover:underline cursor-pointer" data-testid="link-kontakt">
+              Kontakt
+            </span>
+          </Link>
         </div>
       </footer>
 
@@ -260,34 +266,37 @@ export default function Home() {
                   </Link>
                 </li>
                 <li>
-                  <a
-                    href="#impressum"
-                    className="block text-base font-medium hover:underline"
-                    onClick={() => setIsMenuOpen(false)}
-                    data-testid="menu-link-impressum"
-                  >
-                    Impressum
-                  </a>
+                  <Link href="/impressum">
+                    <span
+                      className="block text-base font-medium hover:underline cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-impressum"
+                    >
+                      Impressum
+                    </span>
+                  </Link>
                 </li>
                 <li>
-                  <a
-                    href="#datenschutz"
-                    className="block text-base font-medium hover:underline"
-                    onClick={() => setIsMenuOpen(false)}
-                    data-testid="menu-link-datenschutz"
-                  >
-                    Datenschutz
-                  </a>
+                  <Link href="/agb">
+                    <span
+                      className="block text-base font-medium hover:underline cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-agb"
+                    >
+                      AGB & Datenschutz
+                    </span>
+                  </Link>
                 </li>
                 <li>
-                  <a
-                    href="#kontakt"
-                    className="block text-base font-medium hover:underline"
-                    onClick={() => setIsMenuOpen(false)}
-                    data-testid="menu-link-kontakt"
-                  >
-                    Kontakt
-                  </a>
+                  <Link href="/kontakt">
+                    <span
+                      className="block text-base font-medium hover:underline cursor-pointer"
+                      onClick={() => setIsMenuOpen(false)}
+                      data-testid="menu-link-kontakt"
+                    >
+                      Kontakt
+                    </span>
+                  </Link>
                 </li>
               </ul>
             </nav>
