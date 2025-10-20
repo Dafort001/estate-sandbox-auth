@@ -1060,6 +1060,133 @@ app.post("/api/projects/:jobId/process-editor-return/:shootId", async (c) => {
   }
 });
 
+// GET /api/projects/:jobId/shoots/:shootId/edited-images - Get edited images for client review
+app.get("/api/projects/:jobId/shoots/:shootId/edited-images", async (c) => {
+  try {
+    const jobId = c.req.param("jobId");
+    const shootId = c.req.param("shootId");
+    
+    // Verify job and shoot exist
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    const shoot = await storage.getShoot(shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    // Fetch edited images
+    const editedImages = await storage.getEditedImagesByShoot(shootId);
+    
+    // Fetch stacks for before/after comparison
+    const stacks = await storage.getStacksByShoot(shootId);
+    
+    // Fetch original images for each stack
+    const stacksWithImages = await Promise.all(
+      stacks.map(async (stack) => {
+        const originalImages = await storage.getStackImages(stack.id);
+        return {
+          ...stack,
+          images: originalImages,
+        };
+      })
+    );
+    
+    // Group edited images by version and room type
+    const groupedImages: Record<number, Record<string, any[]>> = {};
+    
+    for (const editedImage of editedImages) {
+      const version = editedImage.version;
+      const roomType = editedImage.roomType || 'uncategorized';
+      
+      if (!groupedImages[version]) {
+        groupedImages[version] = {};
+      }
+      
+      if (!groupedImages[version][roomType]) {
+        groupedImages[version][roomType] = [];
+      }
+      
+      // Find matching stack for before/after comparison
+      const matchingStack = editedImage.stackId 
+        ? stacksWithImages.find(s => s.id === editedImage.stackId)
+        : null;
+      
+      groupedImages[version][roomType].push({
+        ...editedImage,
+        stack: matchingStack,
+      });
+    }
+    
+    return c.json({
+      job,
+      shoot,
+      editedImages: groupedImages,
+      totalImages: editedImages.length,
+    });
+  } catch (error) {
+    console.error("Error fetching edited images:", error);
+    return c.json({ error: "Failed to fetch edited images" }, 500);
+  }
+});
+
+// PUT /api/edited-images/:id/approve - Approve edited image
+app.put("/api/edited-images/:id/approve", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    const { notes } = body;
+    
+    const editedImage = await storage.getEditedImage(id);
+    if (!editedImage) {
+      return c.json({ error: "Edited image not found" }, 404);
+    }
+    
+    await storage.updateEditedImageApprovalStatus(id, 'approved', 'clientApprovedAt');
+    
+    console.log(`✅ Image ${id} approved${notes ? ` with notes: ${notes}` : ''}`);
+    
+    return c.json({
+      success: true,
+      message: "Image approved",
+      imageId: id,
+    });
+  } catch (error) {
+    console.error("Error approving image:", error);
+    return c.json({ error: "Failed to approve image" }, 500);
+  }
+});
+
+// PUT /api/edited-images/:id/reject - Reject edited image
+app.put("/api/edited-images/:id/reject", async (c) => {
+  try {
+    const id = c.req.param("id");
+    const body = await c.req.json().catch(() => ({}));
+    const { notes } = body;
+    
+    const editedImage = await storage.getEditedImage(id);
+    if (!editedImage) {
+      return c.json({ error: "Edited image not found" }, 404);
+    }
+    
+    await storage.updateEditedImageApprovalStatus(id, 'rejected', 'clientRejectedAt');
+    
+    console.log(`❌ Image ${id} rejected${notes ? ` with notes: ${notes}` : ''}`);
+    
+    return c.json({
+      success: true,
+      message: "Image rejected",
+      imageId: id,
+      notes,
+    });
+  } catch (error) {
+    console.error("Error rejecting image:", error);
+    return c.json({ error: "Failed to reject image" }, 500);
+  }
+});
+
 // Health check
 app.get("/api/health", (c) => {
   return c.json({ status: "ok", timestamp: Date.now() });
