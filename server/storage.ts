@@ -117,13 +117,21 @@ export interface IStorage {
   
   // Booking operations
   createBooking(userId: string, bookingData: {
+    region: string;
+    kilometers?: number;
+    contactName?: string;
+    contactEmail?: string;
+    contactMobile: string;
     propertyName: string;
-    propertyAddress: string;
+    propertyAddress?: string;
     propertyType?: string;
     preferredDate?: string;
     preferredTime?: string;
     specialRequirements?: string;
     totalNetPrice: number;
+    vatAmount: number;
+    grossAmount: number;
+    agbAccepted: boolean;
     serviceSelections: Record<string, number>;
   }): Promise<{ booking: Booking; items: BookingItem[] }>;
   getBooking(id: string): Promise<Booking | undefined>;
@@ -626,13 +634,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createBooking(userId: string, bookingData: {
+    region: string;
+    kilometers?: number;
+    contactName?: string;
+    contactEmail?: string;
+    contactMobile: string;
     propertyName: string;
-    propertyAddress: string;
+    propertyAddress?: string;
     propertyType?: string;
     preferredDate?: string;
     preferredTime?: string;
     specialRequirements?: string;
     totalNetPrice: number;
+    vatAmount: number;
+    grossAmount: number;
+    agbAccepted: boolean;
     serviceSelections: Record<string, number>;
   }): Promise<{ booking: Booking; items: BookingItem[] }> {
     const bookingId = randomUUID();
@@ -643,13 +659,21 @@ export class DatabaseStorage implements IStorage {
       .values({
         id: bookingId,
         userId,
+        region: bookingData.region,
+        kilometers: bookingData.kilometers || null,
+        contactName: bookingData.contactName || null,
+        contactEmail: bookingData.contactEmail || null,
+        contactMobile: bookingData.contactMobile,
         propertyName: bookingData.propertyName,
-        propertyAddress: bookingData.propertyAddress,
+        propertyAddress: bookingData.propertyAddress || null,
         propertyType: bookingData.propertyType || null,
         preferredDate: bookingData.preferredDate || null,
         preferredTime: bookingData.preferredTime || null,
         specialRequirements: bookingData.specialRequirements || null,
         totalNetPrice: bookingData.totalNetPrice,
+        vatAmount: bookingData.vatAmount,
+        grossAmount: bookingData.grossAmount,
+        agbAccepted: bookingData.agbAccepted ? "true" : "false",
         status: "pending",
         createdAt: timestamp,
       })

@@ -155,13 +155,21 @@ export const services = pgTable("services", {
 export const bookings = pgTable("bookings", {
   id: varchar("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  region: varchar("region", { length: 3 }).notNull(), // 'HH', 'B', 'EXT'
+  kilometers: bigint("kilometers", { mode: "number" }), // Only for region='EXT'
+  contactName: varchar("contact_name", { length: 255 }), // Optional
+  contactEmail: varchar("contact_email", { length: 255 }), // Optional
+  contactMobile: varchar("contact_mobile", { length: 50 }).notNull(), // Required
   propertyName: varchar("property_name", { length: 255 }).notNull(),
-  propertyAddress: text("property_address").notNull(),
+  propertyAddress: text("property_address"), // Optional (for cases without Google listing)
   propertyType: varchar("property_type", { length: 100 }), // 'Wohnung', 'Haus', 'Gewerbe'
   preferredDate: varchar("preferred_date", { length: 50 }),
   preferredTime: varchar("preferred_time", { length: 50 }),
   specialRequirements: text("special_requirements"),
-  totalNetPrice: bigint("total_net_price", { mode: "number" }).notNull(), // Total in cents
+  totalNetPrice: bigint("total_net_price", { mode: "number" }).notNull(), // Net price in cents
+  vatAmount: bigint("vat_amount", { mode: "number" }).notNull(), // VAT amount in cents (19%)
+  grossAmount: bigint("gross_amount", { mode: "number" }).notNull(), // Gross total in cents
+  agbAccepted: varchar("agb_accepted", { length: 5 }).notNull().default("false"), // 'true' or 'false'
   status: varchar("status", { length: 50 }).notNull().default("pending"), // 'pending', 'confirmed', 'completed', 'cancelled'
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
   confirmedAt: bigint("confirmed_at", { mode: "number" }),
@@ -423,6 +431,44 @@ export type InitUploadInput = z.infer<typeof initUploadSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
 export type AssignRoomTypeInput = z.infer<typeof assignRoomTypeSchema>;
 export type CreateStackInput = z.infer<typeof createStackSchema>;
+
+// Booking/Order Validation Schemas
+export const createOrderApiSchema = z.object({
+  region: z.enum(["HH", "B", "EXT"], { required_error: "Region is required" }),
+  kilometers: z.number().int().min(0).optional(),
+  contact: z.object({
+    name: z.string().optional(),
+    email: z.string().email().optional().or(z.literal("")),
+    mobile: z.string().min(1, "Mobile number is required"), // Required
+  }),
+  propertyName: z.string().min(1, "Property name is required"),
+  propertyAddress: z.string().optional(), // Optional (for cases without Google listing)
+  propertyType: z.string().optional(),
+  preferredDate: z.string().optional(),
+  preferredTime: z.string().optional(),
+  specialRequirements: z.string().optional(),
+  agbAccepted: z.boolean().refine((val) => val === true, {
+    message: "AGB must be accepted",
+  }),
+  items: z.array(
+    z.object({
+      code: z.string().min(1, "Service code is required"),
+      unit: z.enum(["flat", "per_item", "per_km"]),
+      qty: z.number().int().min(1),
+    })
+  ).min(1, "At least one service must be selected"),
+}).refine((data) => {
+  // If region is EXT, kilometers must be provided and > 0
+  if (data.region === "EXT") {
+    return data.kilometers !== undefined && data.kilometers > 0;
+  }
+  return true;
+}, {
+  message: "Kilometers required for EXT region",
+  path: ["kilometers"],
+});
+
+export type CreateOrderApiInput = z.infer<typeof createOrderApiSchema>;
 
 // Response types
 export interface AuthResponse {

@@ -4,7 +4,7 @@ import { serveStatic } from "@hono/node-server/serve-static";
 import { getConnInfo } from "@hono/node-server/conninfo";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
-import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, createOrderSchema, createJobSchema, initUploadSchema, assignRoomTypeSchema, type UserResponse } from "@shared/schema";
+import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, createOrderSchema, createOrderApiSchema, createJobSchema, initUploadSchema, assignRoomTypeSchema, type UserResponse, type CreateOrderApiInput } from "@shared/schema";
 import { getCookie, setCookie, deleteCookie } from "hono/cookie";
 import { generateTokenPair, verifyAccessToken, extractBearerToken } from "./jwt";
 import { randomUUID, randomBytes } from "crypto";
@@ -513,7 +513,7 @@ app.post("/api/orders", async (c) => {
     }
 
     const body = await c.req.json();
-    const validation = createOrderSchema.safeParse(body);
+    const validation = createOrderApiSchema.safeParse(body);
 
     if (!validation.success) {
       return c.json(
@@ -522,9 +522,163 @@ app.post("/api/orders", async (c) => {
       );
     }
 
-    const order = await storage.createOrder(authUser.user.id, validation.data);
+    const orderData: CreateOrderApiInput = validation.data;
 
-    return c.json({ order }, 201);
+    // Load services from JSON to validate and calculate prices
+    const servicesData = await import("../data/preise_piximmo_internal.json");
+    const servicesList = servicesData.services;
+    const VAT_RATE = servicesData.meta.vat_rate; // 0.19
+
+    // Server-side price calculation (don't trust client)
+    let totalNet = 0;
+    const validatedItems: Array<{ code: string; unit: string; qty: number; price: number }> = [];
+
+    for (const item of orderData.items) {
+      const service = servicesList.find((s: any) => s.code === item.code);
+      
+      if (!service) {
+        return c.json({ error: `Invalid service code: ${item.code}` }, 400);
+      }
+
+      let itemTotal = 0;
+      
+      if (service.unit === "per_km") {
+        // AEX service - only valid for EXT region
+        if (orderData.region !== "EXT") {
+          return c.json({ error: `Service ${item.code} (per_km) is only valid for EXT region` }, 400);
+        }
+        // Calculate: kilometers × 2 (round trip) × price
+        const km = orderData.kilometers || 0;
+        itemTotal = km * 2 * (service.price_net || 0);
+      } else if (service.unit === "per_item") {
+        // Per-item services like FEX, B02, etc.
+        itemTotal = (service.price_net || 0) * item.qty;
+      } else if (service.unit === "flat") {
+        // Flat-rate services
+        itemTotal = service.price_net || 0;
+      }
+      // Note: "range" and "from" services have null price_net and are handled as special quotes
+
+      totalNet += itemTotal;
+      validatedItems.push({
+        code: item.code,
+        unit: service.unit,
+        qty: item.qty,
+        price: itemTotal,
+      });
+    }
+
+    // Calculate VAT and gross
+    const vatAmount = totalNet * VAT_RATE;
+    const grossAmount = totalNet + vatAmount;
+
+    // Create booking record
+    const serviceSelections: Record<string, number> = {};
+    orderData.items.forEach(item => {
+      serviceSelections[item.code] = item.qty;
+    });
+
+    const booking = await storage.createBooking(authUser.user.id, {
+      region: orderData.region,
+      kilometers: orderData.kilometers,
+      contactName: orderData.contact.name,
+      contactEmail: orderData.contact.email,
+      contactMobile: orderData.contact.mobile,
+      propertyName: orderData.propertyName,
+      propertyAddress: orderData.propertyAddress,
+      propertyType: orderData.propertyType,
+      preferredDate: orderData.preferredDate,
+      preferredTime: orderData.preferredTime,
+      specialRequirements: orderData.specialRequirements,
+      totalNetPrice: Math.round(totalNet * 100), // Store in cents
+      vatAmount: Math.round(vatAmount * 100), // Store in cents
+      grossAmount: Math.round(grossAmount * 100), // Store in cents
+      agbAccepted: orderData.agbAccepted,
+      serviceSelections,
+    });
+
+    // Return order with calculated totals
+    const response = {
+      id: booking.booking.id,
+      region: orderData.region,
+      kilometers: orderData.kilometers,
+      contact: orderData.contact,
+      propertyName: orderData.propertyName,
+      propertyAddress: orderData.propertyAddress,
+      propertyType: orderData.propertyType,
+      preferredDate: orderData.preferredDate,
+      preferredTime: orderData.preferredTime,
+      specialRequirements: orderData.specialRequirements,
+      agbAccepted: orderData.agbAccepted,
+      items: validatedItems,
+      totals: {
+        net: totalNet,
+        vat_rate: VAT_RATE,
+        vat_amount: vatAmount,
+        gross: grossAmount,
+        currency: "EUR",
+      },
+      createdAt: booking.booking.createdAt,
+      status: booking.booking.status,
+    };
+
+    console.log(`✅ Order created: ${booking.booking.id} for ${authUser.user.email}`);
+
+    // Forward to Tidycal webhook for SMS notification
+    const tidycalWebhookUrl = process.env.TIDYCAL_WEBHOOK_URL;
+    if (tidycalWebhookUrl) {
+      try {
+        const webhookPayload = {
+          source: "pix.immo",
+          event: "order.created",
+          order_id: booking.booking.id,
+          region: orderData.region,
+          address: orderData.propertyAddress || "",
+          contact: {
+            name: orderData.contact.name || "",
+            email: orderData.contact.email || "",
+            mobile: orderData.contact.mobile,
+          },
+          items: validatedItems.map(item => ({
+            code: item.code,
+            unit: item.unit,
+            qty: item.qty,
+          })),
+          totals: {
+            net: totalNet,
+            vat_rate: VAT_RATE,
+            vat_amount: vatAmount,
+            gross: grossAmount,
+            currency: "EUR",
+          },
+        };
+
+        const tidycalResponse = await fetch(tidycalWebhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(process.env.TIDYCAL_API_KEY 
+              ? { "Authorization": `Bearer ${process.env.TIDYCAL_API_KEY}` }
+              : {}
+            ),
+          },
+          body: JSON.stringify(webhookPayload),
+        });
+
+        if (tidycalResponse.ok) {
+          console.log(`✅ Tidycal webhook sent successfully for order ${booking.booking.id}`);
+        } else {
+          console.warn(`⚠️  Tidycal webhook failed (${tidycalResponse.status}): ${await tidycalResponse.text()}`);
+        }
+      } catch (webhookError) {
+        console.error(`❌ Tidycal webhook error for order ${booking.booking.id}:`, webhookError);
+        // Don't fail the order creation if webhook fails
+      }
+    } else {
+      console.log("ℹ️  TIDYCAL_WEBHOOK_URL not configured, skipping SMS notification");
+    }
+
+    return c.json(response, 201);
   } catch (error) {
     console.error("Create order error:", error);
     return c.json({ error: "Internal server error" }, 500);
@@ -625,7 +779,7 @@ app.patch("/api/orders/:id/status", async (c) => {
 
 // ========== Booking Routes ==========
 
-// POST /api/bookings - Create new booking (authenticated users only)
+// POST /api/bookings - Create new booking (authenticated users only) - DEPRECATED, use /api/orders instead
 app.post("/api/bookings", async (c) => {
   try {
     const authUser = await getAuthUser(c);
@@ -635,10 +789,18 @@ app.post("/api/bookings", async (c) => {
     }
 
     const body = await c.req.json();
-    const { propertyName, propertyAddress, propertyType, preferredDate, preferredTime, specialRequirements, serviceSelections } = body;
+    const { region, kilometers, contactName, contactEmail, contactMobile, propertyName, propertyAddress, propertyType, preferredDate, preferredTime, specialRequirements, agbAccepted, serviceSelections } = body;
 
-    if (!propertyName || !propertyAddress) {
-      return c.json({ error: "Property name and address are required" }, 400);
+    if (!propertyName) {
+      return c.json({ error: "Property name is required" }, 400);
+    }
+
+    if (!contactMobile) {
+      return c.json({ error: "Mobile number is required" }, 400);
+    }
+
+    if (!region) {
+      return c.json({ error: "Region is required" }, 400);
     }
 
     if (!serviceSelections || Object.keys(serviceSelections).length === 0) {
@@ -648,6 +810,7 @@ app.post("/api/bookings", async (c) => {
     // Calculate total net price from service selections
     let totalNetPrice = 0;
     const allServices = await storage.getAllServices();
+    const VAT_RATE = 0.19;
     
     for (const [serviceId, quantity] of Object.entries(serviceSelections)) {
       if (typeof quantity === 'number' && quantity > 0) {
@@ -658,7 +821,15 @@ app.post("/api/bookings", async (c) => {
       }
     }
 
+    const vatAmount = totalNetPrice * VAT_RATE;
+    const grossAmount = totalNetPrice + vatAmount;
+
     const result = await storage.createBooking(authUser.user.id, {
+      region: region || "HH",
+      kilometers,
+      contactName,
+      contactEmail,
+      contactMobile,
       propertyName,
       propertyAddress,
       propertyType,
@@ -666,6 +837,9 @@ app.post("/api/bookings", async (c) => {
       preferredTime,
       specialRequirements,
       totalNetPrice,
+      vatAmount,
+      grossAmount,
+      agbAccepted: agbAccepted || false,
       serviceSelections,
     });
 

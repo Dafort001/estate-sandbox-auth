@@ -1,0 +1,237 @@
+{
+  "services": [
+    {
+      "code": "F10",
+      "category": "photography",
+      "title": "Fotopaket 10 Bilder",
+      "description": "Innen- und Außenaufnahmen, Auswahl + Bearbeitung",
+      "price_net": 180,
+      "unit": "flat",
+      "notes": "Standardpaket für kleinere Objekte"
+    },
+    {
+      "code": "F15",
+      "category": "photography",
+      "title": "Fotopaket 15 Bilder",
+      "description": "erweiterter Umfang, Innen + Außen",
+      "price_net": 210,
+      "unit": "flat",
+      "notes": "Ideal für mittlere Wohnungen"
+    },
+    {
+      "code": "F20",
+      "category": "photography",
+      "title": "Fotopaket 20 Bilder",
+      "description": "umfangreiches Shooting, inkl. Detailaufnahmen",
+      "price_net": 240,
+      "unit": "flat",
+      "notes": "Standardpaket für Exposés"
+    },
+    {
+      "code": "F40",
+      "category": "photography",
+      "title": "Fotopaket 40 Bilder",
+      "description": "große Objekte oder Mehrfamilienhäuser",
+      "price_net": 320,
+      "unit": "flat",
+      "notes": "auf Anfrage anpassbar"
+    },
+    {
+      "code": "FEX",
+      "category": "photography",
+      "title": "Zusatzfoto (einzeln)",
+      "description": "je weiteres Bild außerhalb des Pakets",
+      "price_net": 9,
+      "unit": "per_item",
+      "notes": "falls Nachbestellung erfolgt"
+    },
+    {
+      "code": "D04",
+      "category": "drone",
+      "title": "4 Drohnenfotos",
+      "description": "Lage- und Umfelddarstellung",
+      "price_net": 150,
+      "unit": "flat",
+      "notes": "Einzelauftrag"
+    },
+    {
+      "code": "D04C",
+      "category": "drone",
+      "title": "4 Drohnenfotos im Kombipaket",
+      "description": "in Verbindung mit Fotopaket",
+      "price_net": 100,
+      "unit": "flat",
+      "notes": "rabattierte Variante"
+    },
+    {
+      "code": "D10",
+      "category": "drone",
+      "title": "10 Drohnenfotos",
+      "description": "mehrere Perspektiven, höherer Aufwand",
+      "price_net": 220,
+      "unit": "flat",
+      "notes": "nach Wetterlage"
+    },
+    {
+      "code": "DVI",
+      "category": "drone",
+      "title": "Drohnenvideo 1 min",
+      "description": "Außenaufnahmen Video",
+      "price_net": 399,
+      "unit": "flat",
+      "notes": "ggf. Sondergenehmigung nötig"
+    },
+    {
+      "code": "V30",
+      "category": "video",
+      "title": "Video-Teaser 30 Sek.",
+      "description": "Kurzclip, Hoch/Querformat",
+      "price_net": 199,
+      "unit": "flat",
+      "notes": "Social-Media-Version"
+    },
+    {
+      "code": "V60",
+      "category": "video",
+      "title": "Video 1 min Boden",
+      "description": "Innen-/Außenaufnahmen, kein Flug",
+      "price_net": 399,
+      "unit": "flat",
+      "notes": "professionelles Video"
+    },
+    {
+      "code": "V61",
+      "category": "video",
+      "title": "Video 1 min Boden + Drohne",
+      "description": "kombiniert",
+      "price_net": 699,
+      "unit": "flat",
+      "notes": "inkl. Schnitt und Farbkorrektur"
+    },
+    {
+      "code": "VSO",
+      "category": "video",
+      "title": "Social-Media-Slideshow",
+      "description": "aus vorhandenen Bildern",
+      "price_net": 49,
+      "unit": "flat",
+      "notes": "3 Formate (Reels, Story, Post)"
+    },
+    {
+      "code": "TML",
+      "category": "360tour",
+      "title": "MLS-Tour (Basis)",
+      "description": "360°-Tour zur Einbindung in CRM/MLS",
+      "price_net": 100,
+      "unit": "flat",
+      "notes": "für FIO, onOffice, Propstack"
+    },
+    {
+      "code": "TFX",
+      "category": "360tour",
+      "title": "Erweiterte Tour",
+      "description": "interaktive Navigation, Hosting 6 Monate",
+      "price_net": 239,
+      "unit": "flat",
+      "notes": "auf Wunsch mit Grundriss"
+    },
+    {
+      "code": "THD",
+      "category": "360tour",
+      "title": "Hochauflösende Tour",
+      "description": "HD-Qualität, manuelles Stitching",
+      "price_net": 349,
+      "unit": "flat",
+      "notes": "Premiumoption"
+    },
+    {
+      "code": "SBR",
+      "category": "staging",
+      "title": "Virtuelles Staging (Basisraum)",
+      "description": "nach Briefing + Moodboard",
+      "price_net": null,
+      "unit": "range",
+      "price_range": "€90 – €150",
+      "notes": "Preis je Raumgröße"
+    },
+    {
+      "code": "SFX",
+      "category": "staging",
+      "title": "Komplettes Staging (Projekt)",
+      "description": "mehrere Räume, Abstimmung per Freigabe",
+      "price_net": null,
+      "unit": "from",
+      "price_from": "ab €300",
+      "notes": "individuelle Berechnung"
+    },
+    {
+      "code": "B02",
+      "category": "optimization",
+      "title": "Erweiterte Bearbeitung",
+      "description": "Objektentfernung klein",
+      "price_net": 4.80,
+      "unit": "per_item",
+      "notes": "manuell oder KI"
+    },
+    {
+      "code": "B03",
+      "category": "optimization",
+      "title": "Expertenretusche",
+      "description": "komplexe Objektentfernung, Möbel etc.",
+      "price_net": 29,
+      "unit": "per_item",
+      "notes": "> 50 % Flächenänderung"
+    },
+    {
+      "code": "BKI",
+      "category": "optimization",
+      "title": "KI-Optimierung",
+      "description": "automatische Bearbeitung über internes System",
+      "price_net": 1.50,
+      "unit": "per_item",
+      "notes": "nur für pix.immo-Bilder"
+    },
+    {
+      "code": "AH",
+      "category": "travel",
+      "title": "Hamburg",
+      "description": "bis 30 km inklusive",
+      "price_net": 0,
+      "unit": "flat",
+      "notes": "Grundpreis enthalten"
+    },
+    {
+      "code": "AB",
+      "category": "travel",
+      "title": "Berlin",
+      "description": "innerhalb Berliner S-Bahn-Rings inklusive",
+      "price_net": 0,
+      "unit": "flat",
+      "notes": "Grundpreis enthalten"
+    },
+    {
+      "code": "AEX",
+      "category": "travel",
+      "title": "Erweiterte Anfahrt",
+      "description": "> 30 km bzw. außerhalb S-Bahn-Ring",
+      "price_net": 0.80,
+      "unit": "per_km",
+      "notes": "Hin- und Rückweg (× 2)"
+    },
+    {
+      "code": "ARE",
+      "category": "travel",
+      "title": "Reise/Übernachtung",
+      "description": "nach Absprache",
+      "price_net": null,
+      "unit": "from",
+      "price_from": "auf Anfrage",
+      "notes": "individuell vereinbar"
+    }
+  ],
+  "meta": {
+    "currency": "EUR",
+    "vat_rate": 0.19,
+    "last_updated": "2025-01-20"
+  }
+}
