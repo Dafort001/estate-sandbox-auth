@@ -657,6 +657,18 @@ app.get("/api/jobs", async (c) => {
   }
 });
 
+// GET /api/jobs/:jobId/shoots - Get all shoots for a specific job
+app.get("/api/jobs/:jobId/shoots", async (c) => {
+  try {
+    const jobId = c.req.param("jobId");
+    const shoots = await storage.getJobShoots(jobId);
+    return c.json(shoots);
+  } catch (error) {
+    console.error("Error getting job shoots:", error);
+    return c.json({ error: "Failed to get shoots" }, 500);
+  }
+});
+
 // GET /api/jobs/:id - Get single job
 app.get("/api/jobs/:id", async (c) => {
   try {
