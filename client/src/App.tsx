@@ -17,6 +17,7 @@ import Contact from "@/pages/contact";
 import Pricing from "@/pages/pricing";
 import Intake from "@/pages/intake";
 import Jobs from "@/pages/jobs";
+import Review from "@/pages/review";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/preise" component={Pricing} />
       <Route path="/intake" component={Intake} />
       <Route path="/jobs" component={Jobs} />
+      <Route path="/review/:jobId/:shootId" component={Review} />
       <Route component={NotFound} />
     </Switch>
   );
