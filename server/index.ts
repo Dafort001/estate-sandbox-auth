@@ -860,6 +860,209 @@ app.get("/api/download/image/:id", async (c) => {
   }
 });
 
+// ========== Image Interaction Routes (Favorites & Comments) ==========
+
+// Helper to verify image ownership
+async function verifyImageOwnership(imageId: string, userId: string, userRole: string): Promise<{ authorized: boolean; error?: string }> {
+  const image = await storage.getEditedImage(imageId);
+  if (!image) {
+    return { authorized: false, error: "Image not found" };
+  }
+
+  const shoot = await storage.getShoot(image.shootId);
+  if (!shoot) {
+    return { authorized: false, error: "Shoot not found" };
+  }
+
+  const job = await storage.getJob(shoot.jobId);
+  if (!job) {
+    return { authorized: false, error: "Job not found" };
+  }
+
+  // Admin can access all, clients can only access their own
+  if (userRole !== "admin" && job.userId !== userId) {
+    return { authorized: false, error: "Forbidden" };
+  }
+
+  return { authorized: true };
+}
+
+// POST /api/image/:id/favorite - Toggle favorite on an image
+app.post("/api/image/:id/favorite", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const imageId = c.req.param("id");
+    
+    // Verify ownership before allowing favorite
+    const ownership = await verifyImageOwnership(imageId, authUser.user.id, authUser.user.role);
+    if (!ownership.authorized) {
+      return c.json({ error: ownership.error }, ownership.error === "Image not found" || ownership.error === "Shoot not found" || ownership.error === "Job not found" ? 404 : 403);
+    }
+
+    const result = await storage.toggleFavorite(authUser.user.id, imageId);
+    return c.json(result);
+  } catch (error) {
+    console.error("Toggle favorite error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/favorites - Get user's favorited image IDs
+app.get("/api/favorites", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const favorites = await storage.getUserFavorites(authUser.user.id);
+    return c.json({ favorites });
+  } catch (error) {
+    console.error("Get favorites error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/image/:id/comment - Add a comment to an image
+app.post("/api/image/:id/comment", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const imageId = c.req.param("id");
+    const body = await c.req.json();
+    
+    if (!body.comment || typeof body.comment !== "string" || body.comment.trim().length === 0) {
+      return c.json({ error: "Comment is required" }, 400);
+    }
+
+    // Verify ownership before allowing comment
+    const ownership = await verifyImageOwnership(imageId, authUser.user.id, authUser.user.role);
+    if (!ownership.authorized) {
+      return c.json({ error: ownership.error }, ownership.error === "Image not found" || ownership.error === "Shoot not found" || ownership.error === "Job not found" ? 404 : 403);
+    }
+
+    const comment = await storage.addComment(authUser.user.id, imageId, body.comment.trim());
+    return c.json(comment, 201);
+  } catch (error) {
+    console.error("Add comment error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/image/:id/comments - Get comments for an image
+app.get("/api/image/:id/comments", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const imageId = c.req.param("id");
+    
+    // Verify ownership before retrieving comments
+    const ownership = await verifyImageOwnership(imageId, authUser.user.id, authUser.user.role);
+    if (!ownership.authorized) {
+      return c.json({ error: ownership.error }, ownership.error === "Image not found" || ownership.error === "Shoot not found" || ownership.error === "Job not found" ? 404 : 403);
+    }
+
+    const comments = await storage.getImageComments(imageId);
+    return c.json({ comments });
+  } catch (error) {
+    console.error("Get comments error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/download/favorites - Download all favorited images as ZIP
+app.get("/api/download/favorites", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const favoriteIds = await storage.getUserFavorites(authUser.user.id);
+    
+    if (favoriteIds.length === 0) {
+      return c.json({ error: "No favorites to download" }, 400);
+    }
+
+    // Get all favorited images with authorization check
+    const images = [];
+    for (const imageId of favoriteIds) {
+      const image = await storage.getEditedImage(imageId);
+      if (!image) continue;
+
+      // Verify ownership
+      const shoot = await storage.getShoot(image.shootId);
+      if (!shoot) continue;
+
+      const job = await storage.getJob(shoot.jobId);
+      if (!job) continue;
+
+      // Admin can download all, clients can only download their own
+      if (authUser.user.role === "admin" || job.userId === authUser.user.id) {
+        images.push(image);
+      }
+    }
+
+    if (images.length === 0) {
+      return c.json({ error: "No authorized favorites to download" }, 400);
+    }
+
+    // Create ZIP archive
+    const archiver = (await import("archiver")).default;
+    const { Readable } = await import("stream");
+    const { Client } = await import("@replit/object-storage");
+    const objectStorage = new Client();
+
+    // Create a readable stream that will be returned
+    const archive = archiver("zip", {
+      zlib: { level: 9 }
+    });
+
+    // Fetch images from object storage and add to archive
+    for (const image of images) {
+      try {
+        const result = await objectStorage.downloadAsBytes(image.filePath);
+        
+        if (result.ok) {
+          const imageData = Array.isArray(result.value) ? result.value[0] : result.value;
+          archive.append(Buffer.from(imageData), { name: image.filename });
+        }
+      } catch (err) {
+        console.error(`Error fetching image ${image.id}:`, err);
+        // Continue with other images
+      }
+    }
+
+    // Finalize the archive
+    archive.finalize();
+
+    return new Response(archive as any, {
+      headers: {
+        "Content-Type": "application/zip",
+        "Content-Disposition": `attachment; filename="pix-immo-favorites-${Date.now()}.zip"`,
+      },
+    });
+  } catch (error) {
+    console.error("Download favorites error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // ========== Sprint 1: Photo Workflow Routes ==========
 
 // Helper to ensure demo user exists

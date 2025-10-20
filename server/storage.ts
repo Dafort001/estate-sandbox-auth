@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -132,6 +132,15 @@ export interface IStorage {
   
   // Client gallery operations
   getClientGallery(userId: string): Promise<any[]>;
+  
+  // Image favorites operations
+  toggleFavorite(userId: string, imageId: string): Promise<{ favorited: boolean }>;
+  getUserFavorites(userId: string): Promise<string[]>; // Returns array of favorited image IDs
+  getImageFavoriteCount(imageId: string): Promise<number>;
+  
+  // Image comments operations
+  addComment(userId: string, imageId: string, comment: string): Promise<any>;
+  getImageComments(imageId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -739,6 +748,91 @@ export class DatabaseStorage implements IStorage {
     }
 
     return galleryData;
+  }
+
+  async toggleFavorite(userId: string, imageId: string): Promise<{ favorited: boolean }> {
+    // Check if favorite already exists
+    const [existing] = await db
+      .select()
+      .from(imageFavorites)
+      .where(
+        and(
+          eq(imageFavorites.userId, userId),
+          eq(imageFavorites.imageId, imageId)
+        )
+      );
+
+    if (existing) {
+      // Remove favorite
+      await db
+        .delete(imageFavorites)
+        .where(
+          and(
+            eq(imageFavorites.userId, userId),
+            eq(imageFavorites.imageId, imageId)
+          )
+        );
+      return { favorited: false };
+    } else {
+      // Add favorite
+      await db.insert(imageFavorites).values({
+        id: randomUUID(),
+        userId,
+        imageId,
+        createdAt: Date.now(),
+      });
+      return { favorited: true };
+    }
+  }
+
+  async getUserFavorites(userId: string): Promise<string[]> {
+    const favorites = await db
+      .select()
+      .from(imageFavorites)
+      .where(eq(imageFavorites.userId, userId));
+    
+    return favorites.map(f => f.imageId);
+  }
+
+  async getImageFavoriteCount(imageId: string): Promise<number> {
+    const favorites = await db
+      .select()
+      .from(imageFavorites)
+      .where(eq(imageFavorites.imageId, imageId));
+    
+    return favorites.length;
+  }
+
+  async addComment(userId: string, imageId: string, comment: string): Promise<ImageComment> {
+    const [newComment] = await db
+      .insert(imageComments)
+      .values({
+        id: randomUUID(),
+        userId,
+        imageId,
+        comment,
+        createdAt: Date.now(),
+      })
+      .returning();
+    
+    return newComment;
+  }
+
+  async getImageComments(imageId: string): Promise<any[]> {
+    const comments = await db
+      .select({
+        id: imageComments.id,
+        comment: imageComments.comment,
+        createdAt: imageComments.createdAt,
+        userId: imageComments.userId,
+        userEmail: users.email,
+      })
+      .from(imageComments)
+      .leftJoin(users, eq(imageComments.userId, users.id))
+      .where(eq(imageComments.imageId, imageId))
+      .orderBy(imageComments.createdAt);
+    
+    return comments;
   }
 }
 
