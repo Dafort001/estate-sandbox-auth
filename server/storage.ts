@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -149,6 +149,26 @@ export interface IStorage {
   // Image comments operations
   addComment(userId: string, imageId: string, comment: string, altText?: string): Promise<any>;
   getImageComments(imageId: string): Promise<any[]>;
+  
+  // Editorial management operations
+  getEditorialItems(): Promise<EditorialItem[]>;
+  createEditorialItem(data: {
+    title: string;
+    type: string;
+    category: string;
+    status?: string;
+    priority?: string;
+    description?: string;
+    dueDate?: number;
+    publishWeek?: string;
+    assigneeId?: string;
+    tags?: string[];
+    createdBy: string;
+  }): Promise<EditorialItem>;
+  updateEditorialItem(id: string, data: Partial<EditorialItem>): Promise<EditorialItem | undefined>;
+  deleteEditorialItem(id: string): Promise<void>;
+  createEditorialComment(data: { itemId: string; userId: string; comment: string }): Promise<EditorialComment>;
+  getEditorialComments(itemId: string): Promise<EditorialComment[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -857,6 +877,102 @@ export class DatabaseStorage implements IStorage {
       .leftJoin(users, eq(imageComments.userId, users.id))
       .where(eq(imageComments.imageId, imageId))
       .orderBy(imageComments.createdAt);
+    
+    return comments;
+  }
+
+  // Editorial management operations
+  async getEditorialItems(): Promise<EditorialItem[]> {
+    const items = await db
+      .select()
+      .from(editorialItems)
+      .orderBy(desc(editorialItems.createdAt));
+    
+    return items;
+  }
+
+  async createEditorialItem(data: {
+    title: string;
+    type: string;
+    category: string;
+    status?: string;
+    priority?: string;
+    description?: string;
+    dueDate?: number;
+    publishWeek?: string;
+    assigneeId?: string;
+    tags?: string[];
+    createdBy: string;
+  }): Promise<EditorialItem> {
+    const id = randomUUID();
+    const now = Date.now();
+    
+    const [item] = await db
+      .insert(editorialItems)
+      .values({
+        id,
+        title: data.title,
+        type: data.type,
+        category: data.category,
+        status: data.status || 'idea',
+        priority: data.priority || 'normal',
+        description: data.description || null,
+        dueDate: data.dueDate || null,
+        publishWeek: data.publishWeek || null,
+        assigneeId: data.assigneeId || null,
+        tags: data.tags || null,
+        createdBy: data.createdBy,
+        createdAt: now,
+        updatedAt: now,
+        completedAt: null,
+      })
+      .returning();
+    
+    return item;
+  }
+
+  async updateEditorialItem(id: string, data: Partial<EditorialItem>): Promise<EditorialItem | undefined> {
+    const [item] = await db
+      .update(editorialItems)
+      .set({
+        ...data,
+        updatedAt: Date.now(),
+        // Set completedAt when status becomes 'done' or 'published'
+        completedAt: (data.status === 'done' || data.status === 'published') && !data.completedAt 
+          ? Date.now() 
+          : data.completedAt,
+      })
+      .where(eq(editorialItems.id, id))
+      .returning();
+    
+    return item || undefined;
+  }
+
+  async deleteEditorialItem(id: string): Promise<void> {
+    await db.delete(editorialItems).where(eq(editorialItems.id, id));
+  }
+
+  async createEditorialComment(data: { itemId: string; userId: string; comment: string }): Promise<EditorialComment> {
+    const [comment] = await db
+      .insert(editorialComments)
+      .values({
+        id: randomUUID(),
+        itemId: data.itemId,
+        userId: data.userId,
+        comment: data.comment,
+        createdAt: Date.now(),
+      })
+      .returning();
+    
+    return comment;
+  }
+
+  async getEditorialComments(itemId: string): Promise<EditorialComment[]> {
+    const comments = await db
+      .select()
+      .from(editorialComments)
+      .where(eq(editorialComments.itemId, itemId))
+      .orderBy(editorialComments.createdAt);
     
     return comments;
   }

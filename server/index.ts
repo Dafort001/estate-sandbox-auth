@@ -1911,6 +1911,136 @@ app.get("/api/handoff/download/:token", async (c) => {
   }
 });
 
+// ========== Editorial Management (Admin Only) ==========
+
+// Get all editorial items (with optional filters)
+app.get("/api/editorial", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const items = await storage.getEditorialItems();
+    return c.json({ items });
+  } catch (error) {
+    console.error("Get editorial items error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Create new editorial item
+app.post("/api/editorial", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const body = await c.req.json();
+    
+    const item = await storage.createEditorialItem({
+      ...body,
+      createdBy: authUser.user.id,
+    });
+
+    return c.json({ item });
+  } catch (error) {
+    console.error("Create editorial item error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Update editorial item
+app.patch("/api/editorial/:id", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const id = c.req.param("id");
+    const body = await c.req.json();
+    
+    const item = await storage.updateEditorialItem(id, body);
+    
+    if (!item) {
+      return c.json({ error: "Editorial item not found" }, 404);
+    }
+
+    return c.json({ item });
+  } catch (error) {
+    console.error("Update editorial item error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Delete editorial item
+app.delete("/api/editorial/:id", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const id = c.req.param("id");
+    await storage.deleteEditorialItem(id);
+
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Delete editorial item error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Add comment to editorial item
+app.post("/api/editorial/:id/comments", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const itemId = c.req.param("id");
+    const body = await c.req.json();
+    
+    const comment = await storage.createEditorialComment({
+      itemId,
+      userId: authUser.user.id,
+      comment: body.comment,
+    });
+
+    return c.json({ comment });
+  } catch (error) {
+    console.error("Create editorial comment error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Get comments for editorial item
+app.get("/api/editorial/:id/comments", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Forbidden: Admin access required" }, 403);
+    }
+
+    const itemId = c.req.param("id");
+    const comments = await storage.getEditorialComments(itemId);
+
+    return c.json({ comments });
+  } catch (error) {
+    console.error("Get editorial comments error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // Health check
 app.get("/api/health", (c) => {
   return c.json({ status: "ok", timestamp: Date.now() });
