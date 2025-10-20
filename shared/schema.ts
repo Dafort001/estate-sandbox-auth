@@ -494,3 +494,76 @@ export interface HandoffResponse {
   uploadToken: string;
   expiresAt: number;
 }
+
+// Editorial Management - Internal backlog for blog posts and change requests
+export const editorialItems = pgTable("editorial_items", {
+  id: varchar("id").primaryKey(),
+  title: varchar("title", { length: 255 }).notNull(),
+  type: varchar("type", { length: 50 }).notNull(), // 'blog_post' or 'change_request'
+  category: varchar("category", { length: 50 }).notNull(), // 'photo', 'ai', 'marketing', 'infra', 'legal', 'other'
+  status: varchar("status", { length: 50 }).notNull().default("idea"), // 'idea', 'queued', 'drafting', 'in_review', 'scheduled', 'published', 'done'
+  priority: varchar("priority", { length: 20 }).notNull().default("normal"), // 'low', 'normal', 'high', 'urgent'
+  description: text("description"),
+  dueDate: bigint("due_date", { mode: "number" }), // Optional scheduling timestamp
+  publishWeek: varchar("publish_week", { length: 10 }), // Optional e.g. '2025-W44'
+  assigneeId: varchar("assignee_id").references(() => users.id, { onDelete: "set null" }), // Optional user assignment
+  tags: text("tags").array(), // Array of string tags
+  createdBy: varchar("created_by").notNull().references(() => users.id, { onDelete: "cascade" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  completedAt: bigint("completed_at", { mode: "number" }),
+});
+
+export const editorialComments = pgTable("editorial_comments", {
+  id: varchar("id").primaryKey(),
+  itemId: varchar("item_id").notNull().references(() => editorialItems.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  comment: text("comment").notNull(),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// Editorial Relations
+export const editorialItemsRelations = relations(editorialItems, ({ one, many }) => ({
+  createdByUser: one(users, {
+    fields: [editorialItems.createdBy],
+    references: [users.id],
+    relationName: "editorialItemsCreatedBy",
+  }),
+  assignee: one(users, {
+    fields: [editorialItems.assigneeId],
+    references: [users.id],
+    relationName: "editorialItemsAssignee",
+  }),
+  comments: many(editorialComments),
+}));
+
+export const editorialCommentsRelations = relations(editorialComments, ({ one }) => ({
+  item: one(editorialItems, {
+    fields: [editorialComments.itemId],
+    references: [editorialItems.id],
+  }),
+  user: one(users, {
+    fields: [editorialComments.userId],
+    references: [users.id],
+  }),
+}));
+
+// Editorial Types
+export type EditorialItem = typeof editorialItems.$inferSelect;
+export type EditorialComment = typeof editorialComments.$inferSelect;
+
+// Insert Schemas
+export const insertEditorialItemSchema = createInsertSchema(editorialItems).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
+export const insertEditorialCommentSchema = createInsertSchema(editorialComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type InsertEditorialItem = z.infer<typeof insertEditorialItemSchema>;
+export type InsertEditorialComment = z.infer<typeof insertEditorialCommentSchema>;
