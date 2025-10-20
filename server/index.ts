@@ -329,22 +329,8 @@ app.get("/api/me", async (c) => {
   }
 });
 
-// GET /api/services - Get all active services for price list
-app.get("/api/services", async (c) => {
-  try {
-    const authUser = await getAuthUser(c);
-
-    if (!authUser) {
-      return c.json({ error: "Not authenticated" }, 401);
-    }
-
-    const services = await storage.getAllServices();
-    return c.json(services);
-  } catch (error) {
-    console.error("Get services error:", error);
-    return c.json({ error: "Internal server error" }, 500);
-  }
-});
+// Deprecated: Database-based services endpoint removed
+// Services now loaded from JSON file via GET /api/services below
 
 // POST /api/token/refresh - Refresh access token using refresh token
 app.post("/api/token/refresh", tokenRefreshLimiter, async (c) => {
@@ -500,6 +486,18 @@ app.post("/api/password-reset/confirm", passwordResetLimiter, async (c) => {
   } catch (error) {
     console.error("Password reset confirm error:", error);
     return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// GET /api/services - Get service catalog from JSON file (public endpoint)
+app.get("/api/services", async (c) => {
+  try {
+    const servicesData = await import("../data/preise_piximmo_internal.json");
+    // Return the default export which contains services and meta
+    return c.json(servicesData.default || servicesData);
+  } catch (error) {
+    console.error("Get services error:", error);
+    return c.json({ error: "Failed to load services" }, 500);
   }
 });
 

@@ -118,10 +118,15 @@ export default function Booking() {
   const [services, setServices] = useState<ServiceCatalog | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Load services from JSON file
+  // Load services from API
   useEffect(() => {
-    fetch("/data/preise_piximmo_internal.json")
-      .then((res) => res.json())
+    fetch("/api/services")
+      .then((res) => {
+        if (!res.ok) {
+          throw new Error(`HTTP ${res.status}`);
+        }
+        return res.json();
+      })
       .then((data: ServiceCatalog) => {
         setServices(data);
         setIsLoading(false);
@@ -220,7 +225,7 @@ export default function Booking() {
     );
   }
 
-  if (!services) {
+  if (!services || !services.services || !Array.isArray(services.services)) {
     return (
       <div className="min-h-screen bg-muted/30 flex items-center justify-center">
         <div className="text-center">
@@ -447,6 +452,14 @@ export default function Booking() {
                           </CardHeader>
                           <CardContent className="pt-0">
                             <div className="flex items-center gap-3">
+                              <Checkbox
+                                checked={quantity > 0}
+                                disabled={isDisabled}
+                                onCheckedChange={(checked) => {
+                                  handleServiceToggle(service.code, checked ? 1 : 0);
+                                }}
+                                data-testid={`checkbox-${service.code}`}
+                              />
                               {service.unit === "per_km" ? (
                                 // Special handling for AEX (auto-calculate based on km)
                                 <div className="text-sm text-muted-foreground">
@@ -457,14 +470,6 @@ export default function Booking() {
                                 </div>
                               ) : (
                                 <>
-                                  <Checkbox
-                                    checked={quantity > 0}
-                                    disabled={isDisabled}
-                                    onCheckedChange={(checked) => {
-                                      handleServiceToggle(service.code, checked ? 1 : 0);
-                                    }}
-                                    data-testid={`checkbox-${service.code}`}
-                                  />
                                   {!isDisabled && service.unit !== "flat" && (
                                     <div className="flex items-center gap-2">
                                       <label className="text-sm text-muted-foreground">Anzahl:</label>
@@ -757,7 +762,8 @@ export default function Booking() {
           <div className="max-w-2xl mx-auto">
             <h2 className="text-2xl font-semibold mb-6">Bestellung prüfen</h2>
             
-            <div className="space-y-6">
+            <Form {...form}>
+              <div className="space-y-6">
               <Card>
                 <CardHeader>
                   <CardTitle>Kontaktinformationen</CardTitle>
@@ -943,6 +949,7 @@ export default function Booking() {
                 </Button>
               </div>
             </div>
+            </Form>
           </div>
         )}
       </div>
