@@ -129,6 +129,9 @@ export interface IStorage {
   getBooking(id: string): Promise<Booking | undefined>;
   getUserBookings(userId: string): Promise<Booking[]>;
   getAllBookings(): Promise<Booking[]>;
+  
+  // Client gallery operations
+  getClientGallery(userId: string): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -684,6 +687,58 @@ export class DatabaseStorage implements IStorage {
 
   async getAllBookings(): Promise<Booking[]> {
     return await db.select().from(bookings).orderBy(desc(bookings.createdAt));
+  }
+
+  async getClientGallery(userId: string): Promise<any[]> {
+    // Get all jobs for this user
+    const userJobs = await db
+      .select()
+      .from(jobs)
+      .where(eq(jobs.userId, userId))
+      .orderBy(desc(jobs.createdAt));
+
+    const galleryData = [];
+
+    for (const job of userJobs) {
+      // Get all shoots for this job
+      const jobShoots = await db
+        .select()
+        .from(shoots)
+        .where(eq(shoots.jobId, job.id))
+        .orderBy(shoots.createdAt);
+
+      const shootsWithImages = [];
+
+      for (const shoot of jobShoots) {
+        // Get all approved edited images for this shoot
+        const approvedImages = await db
+          .select()
+          .from(editedImages)
+          .where(
+            and(
+              eq(editedImages.shootId, shoot.id),
+              eq(editedImages.clientApprovalStatus, "approved")
+            )
+          )
+          .orderBy(editedImages.roomType, editedImages.sequenceIndex);
+
+        if (approvedImages.length > 0) {
+          shootsWithImages.push({
+            ...shoot,
+            images: approvedImages,
+          });
+        }
+      }
+
+      if (shootsWithImages.length > 0) {
+        galleryData.push({
+          ...job,
+          shoots: shootsWithImages,
+        });
+      }
+    }
+
+    return galleryData;
   }
 }
 

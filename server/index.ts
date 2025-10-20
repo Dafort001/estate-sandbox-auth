@@ -700,6 +700,26 @@ app.get("/api/bookings", async (c) => {
   }
 });
 
+// ========== Client Gallery Routes ==========
+
+// GET /api/client/gallery - Get client's gallery (jobs with approved images)
+app.get("/api/client/gallery", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const galleryData = await storage.getClientGallery(authUser.user.id);
+
+    return c.json({ jobs: galleryData });
+  } catch (error) {
+    console.error("Get client gallery error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // ========== Sprint 1: Photo Workflow Routes ==========
 
 // Helper to ensure demo user exists
