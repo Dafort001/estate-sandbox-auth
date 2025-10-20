@@ -23,6 +23,16 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
 - **Object Storage**: Replit Object Storage (Google Cloud Storage) for RAW images, edited files, and handoff packages. Structure: `/projects/{job_id}/raw/{shoot_id}/`, `/projects/{job_id}/edits/{shoot_id}/final/`, `/projects/{job_id}/handoff/`, `/projects/{job_id}/meta/`.
 - **Authentication**: Custom session-based authentication using HTTP-only cookies and Scrypt password hashing. The design is Lucia-compatible, with optional JWT/Bearer token support for API access. Features include password reset flows with secure one-time tokens and rate limiting on all authentication endpoints.
 - **Order Management**: API endpoints for creating, viewing, and updating property photography orders, with role-based authorization.
+- **Service Catalog & Booking System (PRODUCTION READY)**:
+  - **Services Catalog**: Comprehensive service catalog with 25 services across 7 categories (Photography F10-FEX, Drone D04-DVI, Video V30-VSO, 360° Tours TML-THD, Virtual Staging SBR-SFX, Image Optimization B02-BKI, Travel/Logistics AH-ARE). Each service has serviceCode, nameDE, category, netPrice (in cents, nullable for "on request"), unit, description, priceNote, and isActive fields.
+  - **Internal Price List** (/preisliste): Authenticated-only page displaying all services organized by category with service codes, descriptions, and pricing. Services ordered by serviceCode for predictable presentation.
+  - **Booking Wizard** (/buchen): Multi-step booking form with:
+    - Step 1: Service selection by category with expandable sections, checkboxes, quantity inputs, and real-time price calculation
+    - Step 2: Property details form (name, address, type, preferred date/time, special requirements)
+    - Step 3: Booking summary with service breakdown and total price display
+  - **Booking API**: POST /api/bookings creates booking with associated bookingItems. GET /api/bookings provides role-based access (clients see own, admins see all).
+  - **Database Schema**: `bookings` table (id, userId, propertyName, propertyAddress, propertyType, preferredDate, preferredTime, specialRequirements, totalNetPrice, status, createdAt) and `bookingItems` table (id, bookingId, serviceId, quantity, unitPrice, totalPrice, createdAt).
+  - **Confirmation Flow**: After booking submission, confirmation page displays booking details, next steps, and action buttons. Booking data temporarily stored in sessionStorage for confirmation display.
 - **Photo Workflow System (Sprint 1 - PRODUCTION READY)**:
   - **Jobs**: Each property photography project gets a unique job with `job_number` format `PIX-{timestamp}-{random}`
   - **Shoots**: Photo shoot sessions with 5-character `shoot_code` (first 5 chars of UUID)
