@@ -3,6 +3,7 @@ import ExifReader from "exifreader";
 import { storage } from "./storage";
 import { uploadFile, generateObjectPath } from "./objectStorage";
 import { randomUUID } from "crypto";
+import { generateRawHandoffFilename } from "./fileNaming";
 
 // Multer memory storage for handling file uploads
 export const upload = multer({
@@ -127,6 +128,10 @@ export async function processUploadedFiles(
       return { success: false, stackCount: 0, imageCount: 0, error: "Shoot not found" };
     }
     
+    // Extract shoot code (first 5 chars of shoot ID) and shoot date
+    const shootCode = shoot.shootCode.toUpperCase();
+    const shootDate = new Date(shoot.createdAt);
+    
     // Parse EXIF data for all files
     const parsedImages: ParsedImage[] = await Promise.all(
       files.map(async (file) => {
@@ -143,14 +148,17 @@ export async function processUploadedFiles(
     
     for (let stackIndex = 0; stackIndex < stacks.length; stackIndex++) {
       const stack = stacks[stackIndex];
-      const stackNumber = `g${String(stackIndex + 1).padStart(3, '0')}`;
+      const stackNumberNumeric = stackIndex + 1; // Stack number starts at 1
+      const stackNumber = `g${String(stackNumberNumeric).padStart(3, '0')}`;
       
-      // Create stack record
+      // Create stack record with proper sequence index
+      const sequenceIndex = await storage.getNextSequenceIndexForRoom(shootId, "undefined_space");
       const dbStack = await storage.createStack(
         shootId,
         stackNumber,
         stack.images.length,
-        "undefined_space" // Default room type
+        "undefined_space", // Default room type
+        sequenceIndex
       );
       
       // Process each image in the stack
@@ -159,7 +167,6 @@ export async function processUploadedFiles(
         const file = parsedImage.file;
         
         // Generate file path
-        const extension = file.originalname.substring(file.originalname.lastIndexOf('.'));
         const storagePath = generateObjectPath(jobId, shootId, file.originalname, 'raw');
         
         // Upload to object storage
@@ -169,11 +176,37 @@ export async function processUploadedFiles(
           continue;
         }
         
-        // Create image record in database
+        // Create temporary image record to generate renamed filename
+        const tempImage = {
+          id: randomUUID(),
+          createdAt: Date.now(),
+          shootId,
+          stackId: dbStack.id,
+          originalFilename: file.originalname,
+          renamedFilename: null,
+          filePath: storagePath,
+          fileSize: file.size,
+          mimeType: file.mimetype,
+          exifDate: parsedImage.exifDate || null,
+          exposureValue: parsedImage.exposureValue || "e0", // Use canonical e0 format
+          positionInStack,
+        };
+        
+        // Generate renamed filename using the file naming convention
+        const renamedFilename = generateRawHandoffFilename(
+          tempImage,
+          dbStack,
+          stackNumberNumeric,
+          shootCode,
+          shootDate
+        );
+        
+        // Create image record in database with renamed filename
         await storage.createImage({
           shootId,
           stackId: dbStack.id,
           originalFilename: file.originalname,
+          renamedFilename,
           filePath: storagePath,
           fileSize: file.size,
           mimeType: file.mimetype,

@@ -370,9 +370,17 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Stack operations
-  async createStack(shootId: string, stackNumber: string, frameCount: number, roomType: string): Promise<Stack> {
+  async createStack(
+    shootId: string, 
+    stackNumber: string, 
+    frameCount: number, 
+    roomType: string,
+    sequenceIndex?: number
+  ): Promise<Stack> {
     const id = randomUUID();
-    const sequenceIndex = await this.getNextSequenceIndexForRoom(shootId, roomType);
+    const finalSequenceIndex = sequenceIndex !== undefined 
+      ? sequenceIndex 
+      : await this.getNextSequenceIndexForRoom(shootId, roomType);
     const [stack] = await db
       .insert(stacks)
       .values({
@@ -381,7 +389,7 @@ export class DatabaseStorage implements IStorage {
         stackNumber,
         roomType,
         frameCount,
-        sequenceIndex,
+        sequenceIndex: finalSequenceIndex,
         createdAt: Date.now(),
       })
       .returning();
