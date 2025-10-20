@@ -13,6 +13,7 @@ import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
 import { scheduleEditorReturnProcessing } from "./backgroundQueue";
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
 import { processUploadedFiles } from "./uploadHandler";
+import { processEditorReturnZip } from "./zipProcessor";
 import { writeFile, mkdir } from "fs/promises";
 import { join } from "path";
 import { tmpdir } from "os";
@@ -1004,6 +1005,58 @@ app.post("/api/editor/:token/upload", async (c) => {
   } catch (error) {
     console.error("Error handling editor upload:", error);
     return c.json({ error: "Failed to process upload" }, 500);
+  }
+});
+
+// POST /api/projects/:jobId/process-editor-return/:shootId - Process editor return ZIP
+app.post("/api/projects/:jobId/process-editor-return/:shootId", async (c) => {
+  try {
+    const jobId = c.req.param("jobId");
+    const shootId = c.req.param("shootId");
+    
+    // Verify job and shoot exist
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    const shoot = await storage.getShoot(shootId);
+    if (!shoot) {
+      return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    // Verify shoot status
+    if (shoot.status !== 'editor_returned') {
+      return c.json({ error: `Cannot process: shoot status is ${shoot.status}, expected 'editor_returned'` }, 400);
+    }
+    
+    console.log(`🔄 Processing editor return for shoot ${shoot.shootCode} (job ${job.jobNumber})`);
+    
+    // Process the ZIP file
+    const result = await processEditorReturnZip(storage, shootId, jobId);
+    
+    if (!result.success) {
+      console.error(`❌ Failed to process editor return:`, result.errors);
+      return c.json({ 
+        error: "Failed to process editor return", 
+        details: result.errors,
+        processedCount: result.processedCount,
+        skippedCount: result.skippedCount,
+      }, 500);
+    }
+    
+    console.log(`✅ Successfully processed editor return: ${result.processedCount} images, ${result.skippedCount} skipped`);
+    
+    return c.json({
+      success: true,
+      processedCount: result.processedCount,
+      skippedCount: result.skippedCount,
+      errors: result.errors,
+      message: `Processed ${result.processedCount} edited images`,
+    });
+  } catch (error) {
+    console.error("Error processing editor return:", error);
+    return c.json({ error: "Failed to process editor return" }, 500);
   }
 });
 

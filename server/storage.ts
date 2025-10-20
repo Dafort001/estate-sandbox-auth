@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -92,6 +92,25 @@ export interface IStorage {
   createEditorToken(shootId: string, tokenType: 'download' | 'upload', token: string, expiresAt: number): Promise<EditorToken>;
   getEditorToken(token: string): Promise<EditorToken | undefined>;
   markEditorTokenUsed(token: string): Promise<void>;
+  
+  // Workflow operations - Edited Images
+  createEditedImage(data: {
+    id: string;
+    shootId: string;
+    stackId?: string | null;
+    filename: string;
+    filePath: string;
+    fileSize?: number;
+    version: number;
+    roomType?: string;
+    sequenceIndex?: number;
+    clientApprovalStatus?: string;
+    createdAt: number;
+  }): Promise<any>;
+  getEditedImage(id: string): Promise<any | undefined>;
+  getEditedImagesByShoot(shootId: string): Promise<any[]>;
+  getStacksByShoot(shootId: string): Promise<Stack[]>;
+  updateEditedImageApprovalStatus(id: string, status: string, timestampField?: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -515,6 +534,60 @@ export class DatabaseStorage implements IStorage {
 
   async markEditorTokenUsed(token: string): Promise<void> {
     await db.update(editorTokens).set({ usedAt: Date.now() }).where(eq(editorTokens.token, token));
+  }
+
+  // Edited Image operations
+  async createEditedImage(data: {
+    id: string;
+    shootId: string;
+    stackId?: string | null;
+    filename: string;
+    filePath: string;
+    fileSize?: number;
+    version: number;
+    roomType?: string;
+    sequenceIndex?: number;
+    clientApprovalStatus?: string;
+    createdAt: number;
+  }): Promise<EditedImage> {
+    const [editedImage] = await db
+      .insert(editedImages)
+      .values({
+        id: data.id,
+        shootId: data.shootId,
+        stackId: data.stackId || null,
+        filename: data.filename,
+        filePath: data.filePath,
+        fileSize: data.fileSize,
+        version: data.version,
+        roomType: data.roomType,
+        sequenceIndex: data.sequenceIndex,
+        clientApprovalStatus: data.clientApprovalStatus || 'pending',
+        createdAt: data.createdAt,
+      })
+      .returning();
+    return editedImage;
+  }
+
+  async getEditedImage(id: string): Promise<EditedImage | undefined> {
+    const [editedImage] = await db.select().from(editedImages).where(eq(editedImages.id, id));
+    return editedImage || undefined;
+  }
+
+  async getEditedImagesByShoot(shootId: string): Promise<EditedImage[]> {
+    return await db.select().from(editedImages).where(eq(editedImages.shootId, shootId)).orderBy(desc(editedImages.createdAt));
+  }
+
+  async getStacksByShoot(shootId: string): Promise<Stack[]> {
+    return await db.select().from(stacks).where(eq(stacks.shootId, shootId));
+  }
+
+  async updateEditedImageApprovalStatus(id: string, status: string, timestampField?: string): Promise<void> {
+    const updates: Record<string, any> = { clientApprovalStatus: status };
+    if (timestampField) {
+      updates[timestampField] = Date.now();
+    }
+    await db.update(editedImages).set(updates).where(eq(editedImages.id, id));
   }
 }
 
