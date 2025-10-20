@@ -29,7 +29,7 @@ export default function Contact() {
         <div className="w-full max-w-4xl mx-auto px-6">
           <h1 className="text-3xl md:text-4xl font-bold mb-4" data-testid="page-title">Kontakt</h1>
           <p className="text-lg text-gray-600 mb-12">
-            Sie erreichen uns direkt an unseren beiden Standorten oder über das Kontaktformular.
+            Sie erreichen uns direkt an unseren beiden Standorten.
           </p>
 
           <div className="grid md:grid-cols-2 gap-8 mb-12">
