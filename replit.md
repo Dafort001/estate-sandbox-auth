@@ -23,7 +23,7 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
 - **Object Storage**: Replit Object Storage (Google Cloud Storage) for RAW images, edited files, and handoff packages. Structure: `/projects/{job_id}/raw/{shoot_id}/`, `/projects/{job_id}/edits/{shoot_id}/final/`, `/projects/{job_id}/handoff/`, `/projects/{job_id}/meta/`.
 - **Authentication**: Custom session-based authentication using HTTP-only cookies and Scrypt password hashing. The design is Lucia-compatible, with optional JWT/Bearer token support for API access. Features include password reset flows with secure one-time tokens and rate limiting on all authentication endpoints.
 - **Order Management**: API endpoints for creating, viewing, and updating property photography orders, with role-based authorization.
-- **Photo Workflow System (Sprint 1 - IMPLEMENTED)**:
+- **Photo Workflow System (Sprint 1 - PRODUCTION READY)**:
   - **Jobs**: Each property photography project gets a unique job with `job_number` format `PIX-{timestamp}-{random}`
   - **Shoots**: Photo shoot sessions with 5-character `shoot_code` (first 5 chars of UUID)
   - **Stacks**: Groups of 3 or 5 bracketed images with room-type assignment, automatic grouping by exposure sequence
@@ -32,8 +32,10 @@ The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn U
   - **Filename Convention**: RAW handoff: `{date}-{shootcode}_{room_type}_{index}_g{stack}_e{ev}.{ext}`, Final: `{date}-{shootcode}_{room_type}_{index}_v{ver}.jpg`
   - **Auto-Stacking**: Intelligent bracketing detection supporting 3-frame and 5-frame exposures with proper sequence ordering
   - **Handoff Package**: ZIP generation with manifest.json, renamed files per convention, signed download links
+  - **Editor Return**: ZIP uploads persisted to object storage at `/projects/{job_id}/edits/{shoot_id}/editor_return.zip`
   - **Background Queue**: 60-minute quiet window before processing editor returns (stub implementation)
   - **Notifications**: Email and SMS alerts for handoff-ready and editor-upload-complete events (stub implementation)
+  - **Production Routes**: All Sprint 1 workflow routes fully migrated to Hono (server/index.ts) for Cloudflare Workers compatibility. Development routes (server/routes.ts) maintained for HMR/debugging parity.
 - **Development Server**: Express + Vite middleware for development with HMR, proxied API requests to the Hono backend.
 - **Production Server**: Hono serves static files and handles API requests, designed for Cloudflare Workers.
 
