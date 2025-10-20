@@ -16,12 +16,35 @@ export default function KontaktFormular() {
     subject: "",
     message: "",
     gdprAccepted: false,
+    honeypot: "", // Spam protection - should stay empty
   });
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Spam protection - check honeypot field value from actual DOM (not just state)
+    // This catches both state manipulation and direct DOM manipulation
+    const honeypotField = document.getElementById('website') as HTMLInputElement;
+    const honeypotValue = honeypotField?.value || formData.honeypot;
+    
+    if (honeypotValue) {
+      // Silently reject spam submissions without feedback
+      // Log for debugging/monitoring purposes
+      console.warn('[Spam Protection] Honeypot triggered - submission blocked', {
+        timestamp: new Date().toISOString(),
+        honeypot: honeypotValue,
+      });
+      
+      // Don't show success or error - just silently fail
+      setLoading(true);
+      setTimeout(() => {
+        setLoading(false);
+        // Reset form without showing success
+      }, 1000);
+      return;
+    }
 
     if (!formData.gdprAccepted) {
       toast({
@@ -43,7 +66,8 @@ export default function KontaktFormular() {
 
     setLoading(true);
 
-    // Simulate form submission (in production, this would send to backend)
+    // TODO: In production, send to backend API endpoint
+    // For now, simulate submission
     setTimeout(() => {
       setSubmitted(true);
       setLoading(false);
@@ -184,6 +208,22 @@ export default function KontaktFormular() {
                 rows={6}
                 required
                 data-testid="textarea-message"
+              />
+            </div>
+
+            {/* Honeypot field - hidden from users but visible to bots */}
+            <div className="absolute -left-[9999px]" aria-hidden="true">
+              <label htmlFor="website">
+                Website (leave blank)
+              </label>
+              <Input
+                id="website"
+                name="website"
+                type="text"
+                value={formData.honeypot}
+                onChange={(e) => setFormData({ ...formData, honeypot: e.target.value })}
+                tabIndex={-1}
+                autoComplete="off"
               />
             </div>
 

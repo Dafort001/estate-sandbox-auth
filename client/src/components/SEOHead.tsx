@@ -56,17 +56,19 @@ export function SEOHead({
     setMeta("twitter:description", description);
     setMeta("twitter:image", `${baseUrl}${image}`);
 
-    // Schema.org JSON-LD
+    // Schema.org JSON-LD - cleanup and update
+    let scriptElement = document.querySelector('script[type="application/ld+json"]');
+    
     if (schema) {
-      let scriptElement = document.querySelector('script[type="application/ld+json"]');
-      
       if (!scriptElement) {
         scriptElement = document.createElement("script");
         scriptElement.setAttribute("type", "application/ld+json");
         document.head.appendChild(scriptElement);
       }
-      
       scriptElement.textContent = JSON.stringify(schema);
+    } else if (scriptElement) {
+      // Remove stale JSON-LD script if no schema provided
+      scriptElement.remove();
     }
   }, [title, description, path, type, image, schema]);
 
