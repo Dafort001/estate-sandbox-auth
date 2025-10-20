@@ -126,8 +126,13 @@ export async function processEditorReturnZip(
       const fileBuffer = entry.getData();
       const storagePath = `/projects/${jobId}/edits/${shootId}/final/v${version}/${filename}`;
       
-      console.log(`⬆️  Uploading ${filename} (${fileBuffer.length} bytes)`);
-      const uploadResult = await uploadFile(storagePath, fileBuffer, 'image/jpeg');
+      // Determine correct MIME type from file extension
+      const mimeType = parsed.extension.toLowerCase() === 'png' 
+        ? 'image/png' 
+        : 'image/jpeg';
+      
+      console.log(`⬆️  Uploading ${filename} (${fileBuffer.length} bytes, ${mimeType})`);
+      const uploadResult = await uploadFile(storagePath, fileBuffer, mimeType);
       
       if (!uploadResult.ok) {
         errors.push(`Failed to upload ${filename}: ${uploadResult.error}`);
