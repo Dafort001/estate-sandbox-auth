@@ -88,9 +88,7 @@ export default function Galerie() {
 
   const toggleFavoriteMutation = useMutation({
     mutationFn: async (imageId: string) => {
-      return await apiRequest(`/api/image/${imageId}/favorite`, {
-        method: "POST",
-      });
+      return await apiRequest("POST", `/api/image/${imageId}/favorite`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/favorites"] });
@@ -110,10 +108,7 @@ export default function Galerie() {
 
   const addCommentMutation = useMutation({
     mutationFn: async ({ imageId, comment }: { imageId: string; comment: string }) => {
-      return await apiRequest(`/api/image/${imageId}/comment`, {
-        method: "POST",
-        body: JSON.stringify({ comment }),
-      });
+      return await apiRequest("POST", `/api/image/${imageId}/comment`, { comment });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/image", variables.imageId, "comments"] });

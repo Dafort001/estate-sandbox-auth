@@ -893,21 +893,27 @@ app.post("/api/image/:id/favorite", async (c) => {
     const authUser = await getAuthUser(c);
     
     if (!authUser) {
+      console.log("[Favorite] Not authenticated");
       return c.json({ error: "Not authenticated" }, 401);
     }
 
     const imageId = c.req.param("id");
+    console.log(`[Favorite] User ${authUser.user.email} toggling favorite for image ${imageId}`);
     
     // Verify ownership before allowing favorite
     const ownership = await verifyImageOwnership(imageId, authUser.user.id, authUser.user.role);
+    console.log(`[Favorite] Ownership check result:`, ownership);
     if (!ownership.authorized) {
+      console.log(`[Favorite] Unauthorized: ${ownership.error}`);
       return c.json({ error: ownership.error }, ownership.error === "Image not found" || ownership.error === "Shoot not found" || ownership.error === "Job not found" ? 404 : 403);
     }
 
+    console.log(`[Favorite] Calling storage.toggleFavorite`);
     const result = await storage.toggleFavorite(authUser.user.id, imageId);
+    console.log(`[Favorite] Success:`, result);
     return c.json(result);
   } catch (error) {
-    console.error("Toggle favorite error:", error);
+    console.error("[Favorite] Error:", error);
     return c.json({ error: "Internal server error" }, 500);
   }
 });
