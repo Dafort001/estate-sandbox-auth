@@ -1,7 +1,7 @@
 # pix.immo - Real Estate Media Platform
 
 ## Overview
-pix.immo is a professional real estate media platform designed to connect real estate professionals with photography services. Built with Node.js 22 and TypeScript, it features an order management system for property photography, robust session-based authentication with role-based access control, and a React single-page application (SPA) frontend. Future enhancements include AI-powered image analysis for automated caption generation via the Replicate API and seamless deployment to Cloudflare Workers, leveraging Hono as the backend framework for edge compatibility. The platform aims to streamline the process of ordering and managing property photography, ultimately enhancing property listings with high-quality, AI-analyzed media.
+pix.immo is a professional real estate media platform built with Node.js 22, TypeScript, and React. Its core purpose is to connect real estate professionals with photography services, streamlining the ordering and management of property photography. Key features include an order management system, robust session-based authentication with role-based access control, and a React SPA frontend. The platform is designed for future integration with AI for image analysis and deployment to Cloudflare Workers, aiming to enhance property listings with high-quality, AI-analyzed media.
 
 ## User Preferences
 - Hono for Cloudflare Workers compatibility
@@ -14,90 +14,36 @@ pix.immo is a professional real estate media platform designed to connect real e
 ## System Architecture
 
 ### UI/UX Decisions
-The frontend is a React 18 SPA utilizing Wouter for routing. It employs Shadcn UI components with Tailwind CSS for a modern, responsive design that supports dark/light modes. Forms are managed with `react-hook-form` and `zod` for validation. Interactive elements include `data-testid` attributes for testing.
+The frontend is a React 18 SPA using Wouter for routing, Shadcn UI components, and Tailwind CSS for a modern, responsive design with dark/light mode support. Forms are managed with `react-hook-form` and `zod` for validation.
 
 ### Technical Implementations
-- **Backend**: Hono v4 framework (Cloudflare Workers compatible) running on Node.js 22.
-- **Frontend**: React 18 SPA with Wouter, Shadcn UI, Tailwind CSS, `react-hook-form` + `zod`, and TanStack Query v5 for data fetching.
+- **Backend**: Hono v4 framework (Cloudflare Workers compatible) on Node.js 22.
+- **Frontend**: React 18 SPA with Wouter, Shadcn UI, Tailwind CSS, `react-hook-form` + `zod`, and TanStack Query v5.
 - **Database**: PostgreSQL (Neon) with Drizzle ORM.
-- **Object Storage**: Replit Object Storage (Google Cloud Storage) for RAW images, edited files, and handoff packages. Structure: `/projects/{job_id}/raw/{shoot_id}/`, `/projects/{job_id}/edits/{shoot_id}/final/`, `/projects/{job_id}/handoff/`, `/projects/{job_id}/meta/`.
-- **Authentication**: Custom session-based authentication using HTTP-only cookies and Scrypt password hashing. The design is Lucia-compatible, with optional JWT/Bearer token support for API access. Features include password reset flows with secure one-time tokens and rate limiting on all authentication endpoints.
-- **Order Management**: API endpoints for creating, viewing, and updating property photography orders, with role-based authorization.
-- **Service Catalog & Booking System (PRODUCTION READY)**:
-  - **Services Catalog**: Comprehensive service catalog with 25 services across 7 categories (Photography F10-FEX, Drone D04-DVI, Video V30-VSO, 360° Tours TML-THD, Virtual Staging SBR-SFX, Image Optimization B02-BKI, Travel/Logistics AH-ARE). Each service has serviceCode, nameDE, category, netPrice (in cents, nullable for "on request"), unit, description, priceNote, and isActive fields.
-  - **Internal Price List** (/preisliste): Authenticated-only page displaying all services organized by category with service codes, descriptions, and pricing. Services ordered by serviceCode for predictable presentation.
-  - **Booking Wizard** (/buchen): Multi-step booking form with:
-    - Step 1: Service selection by category with expandable sections, checkboxes, quantity inputs, and real-time price calculation
-    - Step 2: Property details form (name, address, type, preferred date/time, special requirements)
-    - Step 3: Booking summary with service breakdown and total price display
-  - **Booking API**: POST /api/bookings creates booking with associated bookingItems. GET /api/bookings provides role-based access (clients see own, admins see all).
-  - **Database Schema**: `bookings` table (id, userId, propertyName, propertyAddress, propertyType, preferredDate, preferredTime, specialRequirements, totalNetPrice, status, createdAt) and `bookingItems` table (id, bookingId, serviceId, quantity, unitPrice, totalPrice, createdAt).
-  - **Confirmation Flow**: After booking submission, confirmation page displays booking details, next steps, and action buttons. Booking data temporarily stored in sessionStorage for confirmation display.
-- **Photo Workflow System (Sprint 1 - PRODUCTION READY)**:
-  - **Jobs**: Each property photography project gets a unique job with `job_number` format `PIX-{timestamp}-{random}`
-  - **Shoots**: Photo shoot sessions with 5-character `shoot_code` (first 5 chars of UUID)
-  - **Stacks**: Groups of 3 or 5 bracketed images with room-type assignment, automatic grouping by exposure sequence
-  - **Images**: RAW files with metadata tracking (EXIF dates, exposure values, file paths), object storage integration
-  - **Editor Tokens**: Secure 36-hour signed tokens for handoff download and editor upload
-  - **Filename Convention**: RAW handoff: `{date}-{shootcode}_{room_type}_{index}_g{stack}_e{ev}.{ext}`, Final: `{date}-{shootcode}_{room_type}_{index}_v{ver}.jpg`
-  - **Auto-Stacking**: Intelligent bracketing detection supporting 3-frame and 5-frame exposures with proper sequence ordering
-  - **Handoff Package**: ZIP generation with manifest.json, renamed files per convention, signed download links
-  - **Editor Return**: ZIP uploads persisted to object storage at `/projects/{job_id}/edits/{shoot_id}/editor_return.zip`
-  - **Background Queue**: 60-minute quiet window before processing editor returns (stub implementation)
-  - **Notifications**: Email and SMS alerts for handoff-ready and editor-upload-complete events (stub implementation)
-  - **Production Routes**: All Sprint 1 workflow routes fully migrated to Hono (server/index.ts) for Cloudflare Workers compatibility. Development routes (server/routes.ts) maintained for HMR/debugging parity.
-- **Client Gallery with Collaboration Features (PRODUCTION READY)**:
-  - **Gallery Page** (/galerie): Authenticated page displaying client's completed photography projects with approved final images
-  - **Job Organization**: Jobs grouped by property name with shoot codes, dates, and image counts
-  - **Image Viewer**: Responsive grid layout with lightbox modal for full-size viewing, prev/next navigation with keyboard support
-  - **Favorites System** (picdrop-inspired): Heart icon on each image for favoriting, filter to show only favorites, favorite count displayed per job, toggle favorites in lightbox view
-  - **Comments System**: Client feedback on individual images via comment threads with optional alt text (.txt) for SEO and accessibility, displayed in lightbox sidebar, shows user email and timestamp, real-time updates via TanStack Query
-  - **Bulk Download**: Download all favorited images as ZIP file with proper authorization, streams ZIP using archiver library
-  - **Download**: Individual image download functionality with proper content-type headers
-  - **Authorization**: Role-based access - clients see only their jobs, admins see all jobs. All favorites/comments operations verify image→shoot→job→user ownership chain via `verifyImageOwnership` helper to prevent cross-tenant access
-  - **API Endpoints**: 
-    - Gallery: GET /api/client/gallery (job/shoot/image data), GET /api/image/:id (stream images), GET /api/download/image/:id (download with headers)
-    - Favorites: POST /api/image/:id/favorite (toggle), GET /api/favorites (user's favorited image IDs)
-    - Comments: POST /api/image/:id/comment with body {comment: string, altText?: string} (add comment with optional alt text), GET /api/image/:id/comments (list with user info and alt text)
-    - Bulk: GET /api/download/favorites (ZIP of all favorites with per-image authorization)
-  - **Database Schema**: `imageFavorites` table (userId, editedImageId, createdAt) and `imageComments` table (userId, editedImageId, comment, altText, createdAt) with foreign keys and cascade deletes. altText field is optional and used for SEO/accessibility purposes
-  - **Object Storage**: Images served directly from object storage with authorization checks, proper caching headers
-  - **Security**: Job ownership verification before streaming images, `verifyImageOwnership` helper validates image→shoot→job→user chain before all favorite/comment operations, unauthenticated users redirected to login via useEffect
-- **Development Server**: Express + Vite middleware for development with HMR, proxied API requests to the Hono backend.
-- **Production Server**: Hono serves static files and handles API requests, designed for Cloudflare Workers.
+- **Object Storage**: Replit Object Storage (Google Cloud Storage) for RAW images, edited files, and handoff packages.
+- **Authentication**: Custom session-based authentication with HTTP-only cookies and Scrypt password hashing, designed to be Lucia-compatible, with password reset flows and rate limiting.
+- **Order Management**: API for creating, viewing, and updating property photography orders with role-based authorization.
+- **Service Catalog & Booking System**: Comprehensive catalog of 25 services across 7 categories, an internal price list, and a multi-step booking wizard.
+- **Photo Workflow System**: Manages jobs, shoots, image stacks (bracketed images), RAW file handling, secure editor tokens, filename conventions, auto-stacking, ZIP handoff packages, and editor returns.
+- **Client Gallery with Collaboration Features**: Displays completed projects, an image viewer with lightbox, a favorites system, and a comments system for client feedback on images. Includes bulk and individual image download functionality.
+- **Development Server**: Express + Vite middleware for HMR and proxied API requests.
+- **Production Server**: Hono serves static files and API requests, optimized for Cloudflare Workers.
 
 ### Feature Specifications
-- **Authentication**: Signup, login, logout, password reset, session management, optional JWT token refresh.
-- **User Roles**: "admin" and "client" with distinct access privileges.
-- **Order Management**: Create new orders, view orders (clients see own, admins see all), view single order, update order status (admin only). Order statuses include pending, confirmed, completed, cancelled.
-- **Rate Limiting**: IP-based rate limiting on authentication endpoints for brute-force protection (e.g., 5 requests/minute for login).
-- **Homepage**: Minimalist design inspired by NewApology aesthetic. Features sticky header with hamburger menu, generous whitespace (35vh), hero section with "PIX.IMMO" title and "Corporate real estate photography" subtitle, plain text navigation links (Portfolio, Preise, Blog, Login), horizontal scrolling image strip with 11px gaps and infinite loop animation, and minimal footer with legal links (Impressum, Datenschutz, Kontakt).
-- **Gallery**: JavaScript-driven masonry layout with absolute positioning for exact 11px spacing (both horizontal and vertical). Features responsive columns (1/2/3/4 based on viewport), progressive image loading with retry mechanism, dark overlay on hover with caption text, and lightbox modal for full-size viewing.
-- **Blog**: Two-page blog system with overview and detail pages. Overview page (/blog) displays 9 blog posts in a responsive grid (1/2/3 columns) with portrait images (2:3 aspect ratio), 11px gaps, and dark overlay on hover showing title. Detail pages (/blog/:slug) feature full-width portrait hero image with title overlay, narrow centered text column (max-w-xl/576px), and landscape images embedded between paragraphs using -mx-6 negative margins to extend to article gutter. All content in German.
-- **Preise** (/preise): Comprehensive pricing page with 8 service sections:
-  - Immobilienfotografie (Real Estate Photography) - from €180
-  - Drohnenaufnahmen (Drone shots) - from €150 (or €100 as package add-on)
-  - Videoaufnahmen (Video recordings) - from €199
-  - Virtuelle Rundgänge/360° Tours - from €100 (basic) or €239 (extended)
-  - Virtuelles Staging (Virtual Staging) - on request
-  - Bildoptimierung und KI-Retusche (Image optimization) - from €3.90/image
-  - Travel fees and service area information (Hamburg & Berlin)
-  - Call-to-action section linking to login and contact pages
-- **Legal Pages**: Three information pages accessible from footer and hamburger menu:
-  - **Impressum** (/impressum): Company information, legal notice (§5 TMG, §18 MStV), TDM copyright notice (§44b UrhG), and data protection summary
-  - **AGB** (/agb): Complete terms and conditions with 9 sections covering contracts, image rights, usage licensing, fees, liability, and dispute resolution
-  - **Kontakt** (/kontakt): Contact information for Hamburg (main office - Daniel Fortmann) and Berlin (partner - Nino Gehrig Photography) with emails and phone numbers
+- **Authentication**: Signup, login, logout, password reset, session management, and optional JWT token refresh.
+- **User Roles**: "admin" and "client" with distinct access.
+- **Order Management**: Create, view, and update orders with defined statuses.
+- **Rate Limiting**: IP-based rate limiting on authentication endpoints.
+- **Homepage**: Minimalist design with a sticky header, hero section, horizontal scrolling image strip, and minimalist footer.
+- **Gallery**: JavaScript-driven masonry layout with responsive columns, progressive image loading, and a lightbox modal.
+- **Blog**: Two-page system with an overview grid and detailed post pages, using mock data.
+- **Preise (Pricing Page)**: Comprehensive pricing for 8 service sections including photography, drone, video, virtual tours, staging, image optimization, and travel fees.
+- **Legal & Information Pages**: Includes Impressum, AGB, Datenschutz, Kontakt, Kontakt-Formular, About, and FAQ pages.
 
 ### System Design Choices
-The architecture is designed for Cloudflare Workers compatibility, leveraging Hono for its edge-native capabilities. The application separates the development server (Express+Vite) from the production server (Hono) to optimize both environments. Security features include Scrypt hashing, HTTP-only cookies, `SameSite=lax`, and secure environment variable management.
-
-**Homepage Implementation**: Minimalist single-page design with black/white/gray color scheme (except for image strip). Features horizontal scrolling strip with CSS gradient dummy images (mixed aspect ratios: 3:2 landscape, 2:3 portrait, 1:1 square). Strip uses 11px gaps and infinite loop animation (120s duration, translates -66.667% to scroll through 2 of 3 image sets for seamless loop). Animation pauses on hover. Hamburger menu opens full-screen overlay with all navigation items, closes on Escape key or click outside, prevents body scroll when open.
-
-**Gallery Implementation**: Uses JavaScript-driven absolute positioning instead of CSS Grid to achieve exact 11px spacing. CSS Grid with row-spanning cannot achieve consistent vertical spacing due to Math.ceil() creating 0-11px slack per image. The JS solution tracks column heights, places each image in the shortest column using `transform: translate(x, y)`, and guarantees both horizontal and vertical gaps are exactly 11px. Includes progressive image loading with error handling, fallback timeout (2s), and retry mechanism (5 retries @ 1s intervals).
-
-**Blog Implementation**: Frontend-only blog using mock data (no database). Blog overview (/blog) uses CSS Grid (grid-cols-1 md:grid-cols-2 lg:grid-cols-3) with 11px gap and portrait images. Each card has hover effect (dark overlay with title) and links to detail page. Blog post detail pages (/blog/:slug) use narrow content container (max-w-xl/576px) with embedded landscape images that break out to gutter using -mx-6. Navigation from homepage uses proper routes (/blog) not hash anchors. All text in German.
+The architecture emphasizes Cloudflare Workers compatibility using Hono. It separates development (Express+Vite) and production (Hono) environments. Security features include Scrypt hashing, HTTP-only cookies, `SameSite=lax`, and secure environment variable management. Specific implementations for the homepage, gallery, and blog use custom JavaScript and CSS techniques for precise layout and responsiveness. SEO is handled via a `SEOHead` component, Schema.org templates, a sitemap, and robots.txt.
 
 ## External Dependencies
-- **Database**: PostgreSQL (specifically Neon for cloud deployment)
-- **Email Service**: Mailgun (planned for email delivery, e.g., password resets)
-- **AI Service**: Replicate API (planned for AI image captioning)
+- **Database**: PostgreSQL (Neon)
+- **Email Service**: Mailgun (planned)
+- **AI Services**: Modal Labs (USA) for image analysis, Replicate (USA) for advanced retouching. Both process anonymous, encrypted data.

@@ -1,0 +1,18 @@
+# robots.txt for PIX.IMMO
+# Allow all crawlers
+User-agent: *
+Allow: /
+
+# Disallow admin/private areas
+Disallow: /dashboard
+Disallow: /galerie
+Disallow: /intake
+Disallow: /jobs
+Disallow: /review
+Disallow: /order
+Disallow: /buchen
+Disallow: /preisliste
+Disallow: /booking-confirmation
+
+# Sitemap location
+Sitemap: https://pix.immo/sitemap.xml
