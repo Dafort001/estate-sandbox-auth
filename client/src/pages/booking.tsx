@@ -88,11 +88,12 @@ export default function Booking() {
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/bookings"] });
+      sessionStorage.setItem("lastBooking", JSON.stringify(data));
       toast({
         title: "Buchung erfolgreich",
         description: "Ihre Buchung wurde erstellt. Wir kontaktieren Sie in Kürze.",
       });
-      setLocation("/dashboard");
+      setLocation("/booking-confirmation");
     },
     onError: (error: any) => {
       toast({

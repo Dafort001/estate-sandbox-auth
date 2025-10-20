@@ -20,6 +20,7 @@ import Jobs from "@/pages/jobs";
 import Review from "@/pages/review";
 import Preisliste from "@/pages/preisliste";
 import Booking from "@/pages/booking";
+import BookingConfirmation from "@/pages/booking-confirmation";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -38,7 +39,8 @@ function Router() {
       <Route path="/kontakt" component={Contact} />
       <Route path="/preise" component={Pricing} />
       <Route path="/preisliste" component={Preisliste} />
-      <Route path="/booking" component={Booking} />
+      <Route path="/buchen" component={Booking} />
+      <Route path="/booking-confirmation" component={BookingConfirmation} />
       <Route path="/intake" component={Intake} />
       <Route path="/jobs" component={Jobs} />
       <Route path="/review/:jobId/:shootId" component={Review} />
