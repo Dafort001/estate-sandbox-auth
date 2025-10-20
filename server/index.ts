@@ -951,7 +951,8 @@ app.post("/api/image/:id/comment", async (c) => {
       return c.json({ error: ownership.error }, ownership.error === "Image not found" || ownership.error === "Shoot not found" || ownership.error === "Job not found" ? 404 : 403);
     }
 
-    const comment = await storage.addComment(authUser.user.id, imageId, body.comment.trim());
+    const altText = body.altText && typeof body.altText === "string" ? body.altText.trim() : undefined;
+    const comment = await storage.addComment(authUser.user.id, imageId, body.comment.trim(), altText);
     return c.json(comment, 201);
   } catch (error) {
     console.error("Add comment error:", error);

@@ -139,7 +139,7 @@ export interface IStorage {
   getImageFavoriteCount(imageId: string): Promise<number>;
   
   // Image comments operations
-  addComment(userId: string, imageId: string, comment: string): Promise<any>;
+  addComment(userId: string, imageId: string, comment: string, altText?: string): Promise<any>;
   getImageComments(imageId: string): Promise<any[]>;
 }
 
@@ -803,7 +803,7 @@ export class DatabaseStorage implements IStorage {
     return favorites.length;
   }
 
-  async addComment(userId: string, imageId: string, comment: string): Promise<ImageComment> {
+  async addComment(userId: string, imageId: string, comment: string, altText?: string): Promise<ImageComment> {
     const [newComment] = await db
       .insert(imageComments)
       .values({
@@ -811,6 +811,7 @@ export class DatabaseStorage implements IStorage {
         userId,
         imageId,
         comment,
+        altText: altText || null,
         createdAt: Date.now(),
       })
       .returning();
@@ -823,6 +824,7 @@ export class DatabaseStorage implements IStorage {
       .select({
         id: imageComments.id,
         comment: imageComments.comment,
+        altText: imageComments.altText,
         createdAt: imageComments.createdAt,
         userId: imageComments.userId,
         userEmail: users.email,

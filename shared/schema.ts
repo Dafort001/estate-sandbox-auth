@@ -135,6 +135,7 @@ export const imageComments = pgTable("image_comments", {
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   imageId: varchar("image_id").notNull().references(() => editedImages.id, { onDelete: "cascade" }),
   comment: text("comment").notNull(),
+  altText: text("alt_text"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 

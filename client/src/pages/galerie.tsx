@@ -54,6 +54,7 @@ type GalleryData = {
 type Comment = {
   id: string;
   comment: string;
+  altText: string | null;
   createdAt: number;
   userId: string;
   userEmail: string;
@@ -65,6 +66,7 @@ export default function Galerie() {
   const [lightboxImages, setLightboxImages] = useState<EditedImage[]>([]);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [newComment, setNewComment] = useState("");
+  const [newAltText, setNewAltText] = useState("");
   const [showOnlyFavorites, setShowOnlyFavorites] = useState(false);
   const { toast } = useToast();
 
@@ -107,12 +109,13 @@ export default function Galerie() {
   });
 
   const addCommentMutation = useMutation({
-    mutationFn: async ({ imageId, comment }: { imageId: string; comment: string }) => {
-      return await apiRequest("POST", `/api/image/${imageId}/comment`, { comment });
+    mutationFn: async ({ imageId, comment, altText }: { imageId: string; comment: string; altText?: string }) => {
+      return await apiRequest("POST", `/api/image/${imageId}/comment`, { comment, altText });
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/image", variables.imageId, "comments"] });
       setNewComment("");
+      setNewAltText("");
       toast({
         title: "Kommentar hinzugefügt",
         description: "Ihr Kommentar wurde gespeichert.",
@@ -190,6 +193,7 @@ export default function Galerie() {
       addCommentMutation.mutate({
         imageId: selectedImage.id,
         comment: newComment.trim(),
+        altText: newAltText.trim() || undefined,
       });
     }
   };
@@ -522,6 +526,12 @@ export default function Galerie() {
                         </p>
                       </div>
                       <p className="text-sm text-muted-foreground">{comment.comment}</p>
+                      {comment.altText && (
+                        <div className="mt-2 p-2 bg-muted/30 rounded text-xs">
+                          <p className="font-medium text-muted-foreground mb-1">Alt-Text:</p>
+                          <p className="text-muted-foreground">{comment.altText}</p>
+                        </div>
+                      )}
                       <Separator className="mt-2" />
                     </div>
                   ))
@@ -538,6 +548,20 @@ export default function Galerie() {
               {/* Add Comment */}
               <div className="p-4 border-t">
                 <div className="space-y-2">
+                  <div>
+                    <label htmlFor="alt-text-input" className="text-xs text-muted-foreground mb-1 block">
+                      Alt-Text (.txt)
+                    </label>
+                    <Textarea
+                      id="alt-text-input"
+                      placeholder="Alt-Text für SEO und Barrierefreiheit..."
+                      value={newAltText}
+                      onChange={(e) => setNewAltText(e.target.value)}
+                      className="resize-none"
+                      rows={2}
+                      data-testid="input-alt-text"
+                    />
+                  </div>
                   <Textarea
                     placeholder="Kommentar hinzufügen..."
                     value={newComment}
