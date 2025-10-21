@@ -18,6 +18,7 @@ import { processEditorReturnZip } from "./zipProcessor";
 import { generateFinalHandoff } from "./finalHandoff";
 // Removed: writeFile, mkdir, join, tmpdir - no longer needed after removing multipart upload
 import { uploadFile, downloadFile } from "./objectStorage";
+import { scheduleCleanup } from "./cleanup";
 
 const app = new Hono();
 
@@ -2065,9 +2066,13 @@ async function startServer() {
   // Initialize storage before starting server
   await storage.ready();
 
+  // Schedule cleanup job to remove orphaned temp files every 6 hours
+  scheduleCleanup(6, 6);
+
   console.log(`🚀 Server starting on http://0.0.0.0:${port}`);
   console.log(`📝 Auth sandbox available at http://localhost:${port}/public/auth.html`);
   console.log(`💾 Database: PostgreSQL (Neon)`);
+  console.log(`🧹 Temp file cleanup scheduled every 6 hours`);
 
   serve({
     fetch: app.fetch,

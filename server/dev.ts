@@ -2,6 +2,7 @@ import express from "express";
 import { createServer } from "http";
 import { setupVite } from "./vite";
 import { registerRoutes } from "./routes";
+import { scheduleCleanup } from "./cleanup";
 
 const app = express();
 const server = createServer(app);
@@ -70,12 +71,16 @@ async function startDevServer() {
   // Setup Vite middleware for React app
   await setupVite(app, server);
 
+  // Schedule cleanup job to remove orphaned temp files every 6 hours
+  scheduleCleanup(6, 6);
+
   server.listen(port, () => {
     console.log(`🚀 Dev server running on http://localhost:${port}`);
     console.log(`🎨 React app: http://localhost:${port}/`);
     console.log(`📝 Auth sandbox: http://localhost:${port}/public/auth.html`);
     console.log(`💾 Database: PostgreSQL (Neon)`);
     console.log(`⚡ Hot Module Replacement enabled`);
+    console.log(`🧹 Temp file cleanup scheduled every 6 hours`);
   });
 }
 
