@@ -96,6 +96,31 @@ const handoffLimiter = rateLimit({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // CORS configuration for web + future iOS app
+  const allowedOrigins = [
+    process.env.BASE_URL || "https://pix.immo",
+    "http://localhost:5000",
+    "http://localhost:5173",
+    "capacitor://localhost", // For future iOS app
+    "ionic://localhost", // For future Ionic app
+  ];
+
+  app.use((req: Request, res: Response, next: any) => {
+    const origin = req.headers.origin;
+    if (origin && allowedOrigins.includes(origin)) {
+      res.setHeader("Access-Control-Allow-Origin", origin);
+    }
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With");
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader("Access-Control-Max-Age", "86400");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+    next();
+  });
+
   // Request ID middleware - Attach unique request_id to every request
   app.use((req: Request, res: Response, next: any) => {
     const requestId = generateRequestId();

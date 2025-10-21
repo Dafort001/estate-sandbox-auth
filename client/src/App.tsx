@@ -29,6 +29,8 @@ import FAQ from "@/pages/faq";
 import Downloads from "@/pages/downloads";
 import AdminEditorial from "@/pages/admin-editorial";
 import AdminSeo from "@/pages/admin-seo";
+import UploadRaw from "@/pages/upload-raw";
+import AILab from "@/pages/ai-lab";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -60,6 +62,8 @@ function Router() {
       <Route path="/review/:jobId/:shootId" component={Review} />
       <Route path="/admin/editorial" component={AdminEditorial} />
       <Route path="/admin/seo" component={AdminSeo} />
+      <Route path="/upload-raw" component={UploadRaw} />
+      <Route path="/ai-lab" component={AILab} />
       <Route component={NotFound} />
     </Switch>
   );
