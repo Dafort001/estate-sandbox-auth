@@ -3,7 +3,7 @@ import { createServer } from "http";
 import { setupVite } from "./vite";
 import { registerRoutes } from "./routes";
 import { scheduleCleanup } from "./cleanup";
-import { getStorage } from "./storage";
+import { storage } from "./storage";
 import { seedDemoJobs } from "./seed-demo-jobs";
 
 const app = express();
@@ -77,7 +77,6 @@ async function startDevServer() {
   scheduleCleanup(6, 6);
 
   // Seed demo jobs on startup (only if database is empty)
-  const storage = getStorage();
   await seedDemoJobs(storage);
 
   server.listen(port, () => {
