@@ -1,0 +1,150 @@
+Scope
+Harden the API and move uploads to a presigned-URL flow. Apply strict auth, CORS, naming validation, and remove unsafe endpoints.
+0) Files / Areas to touch
+server/index.ts
+server/uploadHandler.ts
+server/objectStorage.ts
+server/fileNaming.ts
+server/storage.ts (if needed for ownership checks)
+wrangler.toml
+README.md (brief changes recap)
+(Optional) server/middleware/* for CORS/auth/error wrappers
+
+1) CORS (must be explicit)
+Where: server/index.ts (or dedicated middleware)
+Do:
+Allowlist origins (no * on auth/upload routes).
+Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS.
+Headers: Authorization, Content-Type.
+Ensure OPTIONS preflight returns 200 with the same allow headers.
+Acceptance:
+Browser preflight for a POST to /api/orders and /api/uploads/presign succeeds.
+No wildcard origin on protected routes.
+
+2) Secure the existing multipart route (until presign is live)
+Where: server/index.ts (POST /api/uploads/:shootId) and server/uploadHandler.ts
+Do:
+Require auth (getAuthUser) and owner check (user must own the job/shoot unless role=admin).
+Enforce limits: max files per request, max file size, MIME whitelist (image/jpeg, image/heic, optional video/mp4 if really needed).
+Return 401/403/413/415 appropriately.
+Temp cleanup: delete all files written to /tmp after processing (also on error).
+Acceptance:
+Unauthenticated call → 401.
+Authenticated non-owner → 403.
+Oversize or wrong MIME → 413/415.
+/tmp has no leftovers after any request.
+
+3) Introduce presigned upload flow (new endpoint)
+Where: server/index.ts (route), server/objectStorage.ts (signing), server/fileNaming.ts (validation)
+Do:
+New endpoint: POST /api/uploads/presign (auth required).
+Input: { shootId, filename, contentType }.
+Validate shootId belongs to current user (unless admin).
+Validate filename against v3.1: {date}-{shootcode}_{room_type}_{index}_v{ver}.jpg.
+Generate presigned PUT URL (TTL 60–120s). Enforce Content-Type and set object key to include shootCode and logical prefix.
+Response: { url, method: "PUT", headers: { "Content-Type": ... }, expiresIn }.
+Acceptance:
+Invalid filename → 422.
+Non-owner shoot → 403.
+Returned URL expires and rejects after TTL.
+PUT with mismatched Content-Type is rejected.
+
+4) Enforce naming schema globally
+Where: server/fileNaming.ts and any path/key generation site
+Do:
+Central validator for v3.1 schema.
+Reject (422) any presign or server-side upload where the filename doesn’t match.
+Ensure keys include shootCode and a stable path structure.
+Acceptance:
+Malformed names are blocked with 422.
+All generated keys include shootCode and the configured prefix.
+
+5) Remove duplicate route
+Where: server/index.ts
+Do:
+GET /api/handoff/download/:token is currently defined twice. Keep only the fully implemented version and delete the stub.
+Acceptance:
+Only one definition remains; route works with valid tokens, rejects invalid/expired/used.
+
+6) Protect internal pricing
+Where: GET /api/services in server/index.ts and data source
+Do:
+If file contains internal net prices or non-public meta, make the endpoint auth-only or return a public subset (no sensitive fields).
+Acceptance:
+Without auth: either 401/403 or a redacted public dataset (decide and document).
+No net or confidential values leaked publicly.
+
+7) Demo admin only in DEV
+Where: ensureDemoUser() in server/index.ts
+Do:
+Gate creation of demo@pix.immo admin strictly behind NODE_ENV === "development".
+Acceptance:
+In production: demo user is never created.
+
+8) Rate limits where missing
+Where: server/index.ts
+Do:
+Add moderate rate limits to:
+POST /api/uploads/presign
+POST /api/uploads/:shootId (while it exists)
+POST /api/editor/:token/upload
+POST /api/orders
+Use existing hono-rate-limiter with IP keying (via getClientIP).
+Acceptance:
+Burst abuse is throttled; normal use unaffected.
+
+9) Logging & audit
+Where: server/index.ts (global), error handler/util
+Do:
+Generate a request_id per request (e.g., header if present or random).
+Log significant actions with request_id (presign, upload, approval).
+No secrets/PII in logs.
+Acceptance:
+Each log line for critical paths includes request_id.
+Stack traces not returned to clients in production.
+
+10) Wrangler / R2 bindings
+Where: wrangler.toml
+Do:
+Define R2 binding(s) for the upload bucket.
+Separate env sections for development and production.
+Confirm vars/secrets mapping (no hardcoded secrets in code).
+Acceptance:
+wrangler publish binds R2 successfully in both envs.
+No secrets committed; rely on Wrangler secrets.
+
+11) README update
+Where: README.md
+Do:
+Add a short “Uploads & Security” section:
+Presigned flow overview, input/response shape.
+Naming rules (v3.1).
+Ownership/auth rules.
+Dev vs. Prod notes (demo user, CORS).
+Acceptance:
+A new team member can follow the doc to test presign + upload quickly.
+
+12) Smoke tests (manual)
+Do:
+CORS preflight on /api/uploads/presign → 200.
+Unauth presign → 401.
+Wrong filename → 422.
+Non-owner shoot → 403.
+Valid presign → PUT works; expired presign → PUT fails.
+Oversized multipart upload → 413 (until removed).
+GET /api/services behaves per chosen policy (auth-only or redacted).
+Acceptance:
+All above pass exactly as specified.
+
+Definition of Done
+Presigned upload flow live and documented.
+Old multipart route secured (auth/limits) or slated for removal once clients switch.
+CORS explicit and passing preflight.
+Naming schema enforced.
+No demo admin in prod.
+Pricing not publicly leaking internal values.
+Rate limiting and logging in place.
+wrangler.toml bindings correct for R2.
+README updated.
+
+If anything is unclear, ask before implementing. Keep changes minimal, focused, and behind existing abstractions.
