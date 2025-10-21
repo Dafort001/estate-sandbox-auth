@@ -38,9 +38,19 @@ export function SEOHead({
     // Standard meta tags
     setMeta("description", description);
 
-    // Open Graph tags
+    // Canonical link
     const baseUrl = window.location.origin;
     const fullUrl = `${baseUrl}${path}`;
+    
+    let canonicalLink = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
+    if (!canonicalLink) {
+      canonicalLink = document.createElement("link");
+      canonicalLink.setAttribute("rel", "canonical");
+      document.head.appendChild(canonicalLink);
+    }
+    canonicalLink.setAttribute("href", fullUrl);
+
+    // Open Graph tags
     
     setMeta("og:title", `${title} | PIX.IMMO`, true);
     setMeta("og:description", description, true);
