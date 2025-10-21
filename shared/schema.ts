@@ -134,6 +134,58 @@ export const seoMetadata = pgTable("seo_metadata", {
   updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
 });
 
+// Personal Access Tokens (PAT) for app authentication
+export const personalAccessTokens = pgTable("personal_access_tokens", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  token: text("token").notNull().unique(), // SHA-256 hashed token
+  name: varchar("name", { length: 100 }), // User-friendly name (e.g., "iPhone App", "iPad")
+  scopes: text("scopes").notNull(), // Comma-separated: upload:raw,view:gallery,ai:run,order:read
+  expiresAt: bigint("expires_at", { mode: "number" }).notNull(),
+  lastUsedAt: bigint("last_used_at", { mode: "number" }),
+  lastUsedIp: varchar("last_used_ip", { length: 45 }), // IPv6 compatible
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+  revokedAt: bigint("revoked_at", { mode: "number" }),
+});
+
+// Upload sessions for resumable multipart uploads
+export const uploadSessions = pgTable("upload_sessions", {
+  id: varchar("id").primaryKey(), // uploadId
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shootId: varchar("shoot_id").notNull().references(() => shoots.id, { onDelete: "cascade" }),
+  filename: varchar("filename", { length: 255 }).notNull(),
+  roomType: varchar("room_type", { length: 50 }).notNull(),
+  stackIndex: bigint("stack_index", { mode: "number" }).notNull(),
+  stackCount: bigint("stack_count", { mode: "number" }).notNull(), // 3 or 5
+  r2Key: text("r2_key").notNull(), // Full R2 object key
+  uploadId: text("upload_id").notNull(), // R2 multipart upload ID
+  fileSize: bigint("file_size", { mode: "number" }),
+  parts: text("parts"), // JSON array of {partNumber, etag}
+  status: varchar("status", { length: 20 }).notNull().default("initiated"), // 'initiated', 'uploading', 'completed', 'failed'
+  completedAt: bigint("completed_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// AI processing jobs
+export const aiJobs = pgTable("ai_jobs", {
+  id: varchar("id").primaryKey(),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  shootId: varchar("shoot_id").notNull().references(() => shoots.id, { onDelete: "cascade" }),
+  tool: varchar("tool", { length: 50 }).notNull(), // upscale_x2, denoise, wb_normalize, etc.
+  modelSlug: varchar("model_slug", { length: 100 }).notNull(), // replicate:upscale, modal:denoise, etc.
+  sourceImageKey: text("source_image_key").notNull(), // deliveries/{shoot_id}/...
+  outputImageKey: text("output_image_key"), // deliveries/{shoot_id}/ai/{basename}_v{ver}.jpg
+  params: text("params"), // JSON object with tool parameters
+  externalJobId: text("external_job_id"), // Replicate/Modal job ID
+  status: varchar("status", { length: 20 }).notNull().default("pending"), // 'pending', 'processing', 'completed', 'failed'
+  cost: bigint("cost", { mode: "number" }), // Cost in cents
+  credits: bigint("credits", { mode: "number" }), // Credits consumed
+  errorMessage: text("error_message"),
+  webhookReceivedAt: bigint("webhook_received_at", { mode: "number" }),
+  completedAt: bigint("completed_at", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
 export const imageFavorites = pgTable("image_favorites", {
   id: varchar("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -201,10 +253,13 @@ export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   refreshTokens: many(refreshTokens),
   passwordResetTokens: many(passwordResetTokens),
+  personalAccessTokens: many(personalAccessTokens),
   orders: many(orders),
   jobs: many(jobs),
   imageFavorites: many(imageFavorites),
   imageComments: many(imageComments),
+  uploadSessions: many(uploadSessions),
+  aiJobs: many(aiJobs),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
@@ -252,6 +307,8 @@ export const shootsRelations = relations(shoots, ({ one, many }) => ({
   images: many(images),
   editorTokens: many(editorTokens),
   editedImages: many(editedImages),
+  uploadSessions: many(uploadSessions),
+  aiJobs: many(aiJobs),
 }));
 
 export const stacksRelations = relations(stacks, ({ one, many }) => ({
@@ -335,6 +392,35 @@ export const bookingItemsRelations = relations(bookingItems, ({ one }) => ({
   }),
 }));
 
+export const personalAccessTokensRelations = relations(personalAccessTokens, ({ one }) => ({
+  user: one(users, {
+    fields: [personalAccessTokens.userId],
+    references: [users.id],
+  }),
+}));
+
+export const uploadSessionsRelations = relations(uploadSessions, ({ one }) => ({
+  user: one(users, {
+    fields: [uploadSessions.userId],
+    references: [users.id],
+  }),
+  shoot: one(shoots, {
+    fields: [uploadSessions.shootId],
+    references: [shoots.id],
+  }),
+}));
+
+export const aiJobsRelations = relations(aiJobs, ({ one }) => ({
+  user: one(users, {
+    fields: [aiJobs.userId],
+    references: [users.id],
+  }),
+  shoot: one(shoots, {
+    fields: [aiJobs.shootId],
+    references: [shoots.id],
+  }),
+}));
+
 // Type exports
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
@@ -370,6 +456,12 @@ export type Booking = typeof bookings.$inferSelect;
 export type InsertBooking = typeof bookings.$inferInsert;
 export type BookingItem = typeof bookingItems.$inferSelect;
 export type InsertBookingItem = typeof bookingItems.$inferInsert;
+export type PersonalAccessToken = typeof personalAccessTokens.$inferSelect;
+export type InsertPersonalAccessToken = typeof personalAccessTokens.$inferInsert;
+export type UploadSession = typeof uploadSessions.$inferSelect;
+export type InsertUploadSession = typeof uploadSessions.$inferInsert;
+export type AiJob = typeof aiJobs.$inferSelect;
+export type InsertAiJob = typeof aiJobs.$inferInsert;
 
 // Validation Schemas
 export const signupSchema = z.object({
