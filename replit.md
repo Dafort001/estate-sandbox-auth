@@ -24,6 +24,7 @@ The frontend is a React 18 SPA using Wouter for routing, Shadcn UI components, a
 - **Authentication**: Custom session-based authentication with HTTP-only cookies and Scrypt password hashing, designed to be Lucia-compatible, with password reset flows and rate limiting.
 - **Order Management**: API for creating, viewing, and updating property photography orders with role-based authorization.
 - **Service Catalog & Booking System**: Comprehensive catalog of 25 services across 7 categories, an internal price list, and a multi-step booking wizard.
+- **Google Maps Integration**: Rooftop-accurate address verification using Google Places Autocomplete, Geocoding API for validation, and Static Maps API for thumbnail previews. Address data (lat/lng/placeId/formatted) stored in orders, jobs, and bookings tables.
 - **Photo Workflow System**: Manages jobs, shoots, image stacks (bracketed images), RAW file handling, secure editor tokens, filename conventions, auto-stacking, ZIP handoff packages, and editor returns.
 - **Client Gallery with Collaboration Features**: Displays completed projects, an image viewer with lightbox, a favorites system, and a comments system for client feedback on images. Includes bulk and individual image download functionality.
 - **Development Server**: Express + Vite middleware for HMR and proxied API requests.
