@@ -167,7 +167,109 @@ npm start
 - `PATCH /api/orders/:id/status` - Update order status (admin only)
 
 ### Health
-- `GET /api/health` - Health check
+- `GET /api/health` - Health check (legacy)
+- `GET /healthz` - Healthcheck for monitoring/CI/CD
+
+### Upload & File Management
+- `POST /api/uploads/init` - Initialize shoot for uploading
+- `POST /api/shoots/:id/presign` - Get presigned URLs for direct upload to object storage (**RECOMMENDED**)
+- `GET /api/shoots/:id` - Get shoot details
+- `GET /api/shoots/:id/stacks` - Get all stacks for a shoot
+- `GET /api/shoots/:id/images` - Get all images for a shoot
+- `PUT /api/stacks/:id/room-type` - Assign room type to a stack
+- `POST /api/projects/:jobId/handoff/:shootId` - Generate handoff package
+
+**Note:** The legacy multipart upload route (`POST /api/uploads/:shootId`) has been removed. All clients should now use the presigned upload flow for better security and scalability.
+
+#### Presigned Upload Flow
+
+**Step 1: Initialize a shoot**
+```bash
+POST /api/uploads/init
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "jobNumber": "J-123456"
+}
+
+Response:
+{
+  "shootId": "abc-123",
+  "shootCode": "ABC12",
+  "jobId": "def-456"
+}
+```
+
+**Step 2: Request presigned URLs**
+```bash
+POST /api/shoots/:shootId/presign
+Content-Type: application/json
+Authorization: Bearer <token>
+
+{
+  "files": [
+    {
+      "filename": "20241021-ABC12_kitchen_01_v1.jpg",
+      "contentType": "image/jpeg",
+      "size": 5242880
+    }
+  ]
+}
+
+Response:
+{
+  "urls": [
+    {
+      "filename": "20241021-ABC12_kitchen_01_v1.jpg",
+      "uploadUrl": "https://storage.googleapis.com/...",
+      "expiresIn": 120
+    }
+  ]
+}
+```
+
+**Step 3: Upload files directly to object storage**
+```bash
+PUT <uploadUrl>
+Content-Type: image/jpeg
+Content-Length: 5242880
+<binary data>
+```
+
+**Security Features:**
+- Ownership validation: Only shoot owners can request presigned URLs
+- Filename validation: Files must conform to v3.1 naming schema
+- Rate limiting: 20 presign requests per minute per IP
+- Short-lived URLs: 120-second TTL
+- Max 50 files per request, 50MB per file
+
+## File Naming Convention (v3.1)
+
+All uploaded files must follow the v3.1 naming schema:
+
+```
+{date}-{shootcode}_{room_type}_{index}_v{version}.{ext}
+
+Examples:
+- 20241021-ABC12_kitchen_01_v1.jpg
+- 20241021-ABC12_bedroom_02_v2.heic
+- 20241021-ABC12_bathroom_01_v1.jpg
+```
+
+**Components:**
+- **date**: YYYYMMDD format
+- **shootcode**: 5-character uppercase code
+- **room_type**: Room identifier (kitchen, bedroom, bathroom, livingroom, exterior, etc.)
+- **index**: 2-digit sequence number (01-99)
+- **version**: Version number (v1, v2, v3, etc.)
+- **ext**: File extension (jpg, jpeg, heic, heif, png)
+
+**Validation:**
+- Filenames are validated on upload
+- Invalid filenames return 422 Unprocessable Entity
+- Date must be valid YYYYMMDD format
+- Shootcode must match the shoot's code
 
 ## Frontend Routes
 
@@ -242,28 +344,99 @@ npm start
 - **XSS Prevention**: HttpOnly cookies
 - **Role-Based Access**: Enforced at API level
 
-## Cloudflare Workers Deployment
+## Deployment
 
-The application is designed for seamless Workers deployment:
+### Cloudflare Workers Deployment (Wrangler)
+
+The application is designed for seamless Cloudflare Workers deployment using Wrangler:
+
+#### Prerequisites
+```bash
+npm install -g wrangler
+wrangler login
+```
+
+#### Development Deployment
+```bash
+# Deploy to development environment
+wrangler deploy --env development
+
+# Watch mode (auto-deploy on changes)
+wrangler dev
+```
+
+#### Production Deployment
+```bash
+# Build the application
+npm run build
+
+# Deploy to production
+wrangler deploy --env production
+```
+
+#### Environment Configuration
+
+The `wrangler.toml` file defines two environments:
+
+**Development:**
+- Namespace: `pix-immo-dev`
+- Auto-deploys for testing
+- Uses development secrets
+
+**Production:**
+- Namespace: `pix-immo`
+- Manual deployments only
+- Separate production secrets
+- Custom domain routing
+
+#### Required Secrets
+
+Set secrets using Wrangler CLI (never commit to source):
+
+```bash
+# Development secrets
+wrangler secret put DATABASE_URL --env development
+wrangler secret put SESSION_SECRET --env development
+wrangler secret put JWT_SECRET --env development
+
+# Production secrets
+wrangler secret put DATABASE_URL --env production
+wrangler secret put SESSION_SECRET --env production
+wrangler secret put JWT_SECRET --env production
+wrangler secret put MAILGUN_API_KEY --env production
+wrangler secret put REPLICATE_API_KEY --env production
+```
+
+#### R2 Bucket Setup
+
+Uncomment and configure R2 bindings in `wrangler.toml`:
+
+```toml
+[[r2_buckets]]
+binding = "IMAGES_BUCKET"
+bucket_name = "pix-immo-images"
+preview_bucket_name = "pix-immo-images-dev"
+```
+
+Create buckets:
+```bash
+wrangler r2 bucket create pix-immo-images
+wrangler r2 bucket create pix-immo-images-dev
+```
 
 ### Architecture Benefits
 - **Hono Framework**: Built for edge runtimes (Workers, Deno, Bun)
 - **No Node.js APIs**: Routes use standard Web APIs
 - **Modular Storage**: Drizzle ORM works with D1 or Neon PostgreSQL
 - **Static Assets**: React SPA deploys to Pages or R2
-
-### Deployment Steps
-1. Build React app: `npm run build`
-2. Deploy Hono backend to Cloudflare Workers
-3. Serve static files from Cloudflare Pages or R2
-4. Configure environment variables in Workers dashboard
-5. Connect to Neon PostgreSQL (Workers-compatible)
+- **Global CDN**: Sub-100ms response times worldwide
 
 ### Why It Works
 - All HTTP handling uses Hono's Workers-compatible API
 - Database queries use Drizzle ORM (supports D1 and PostgreSQL)
 - No Node.js-specific dependencies in route handlers
 - Session management can use Workers KV or external store
+- Environment separation prevents dev/prod conflicts
 
 ## Project Structure
 
