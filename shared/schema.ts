@@ -554,8 +554,13 @@ export type CreateOrderInput = z.infer<typeof createOrderSchema>;
 
 // Workflow Validation Schemas
 export const createJobSchema = z.object({
+  customerName: z.string().optional(),
   propertyName: z.string().min(1, "Property name is required"),
   propertyAddress: z.string().optional(),
+  deadlineAt: z.number().optional(), // Unix timestamp
+  deliverGallery: z.boolean().optional().default(true),
+  deliverAlttext: z.boolean().optional().default(true),
+  deliverExpose: z.boolean().optional().default(false),
 });
 
 export const initUploadSchema = z.object({

@@ -47,7 +47,15 @@ export interface IStorage {
   updateOrderStatus(id: string, status: string): Promise<void>;
   
   // Workflow operations - Jobs
-  createJob(userId: string, propertyName: string, propertyAddress?: string): Promise<Job>;
+  createJob(userId: string, data: {
+    customerName?: string;
+    propertyName: string;
+    propertyAddress?: string;
+    deadlineAt?: number;
+    deliverGallery?: boolean;
+    deliverAlttext?: boolean;
+    deliverExpose?: boolean;
+  }): Promise<Job>;
   getJob(id: string): Promise<Job | undefined>;
   getJobByNumber(jobNumber: string): Promise<Job | undefined>;
   getUserJobs(userId: string): Promise<Job[]>;
@@ -446,7 +454,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   // Job operations
-  async createJob(userId: string, propertyName: string, propertyAddress?: string): Promise<Job> {
+  async createJob(userId: string, data: {
+    customerName?: string;
+    propertyName: string;
+    propertyAddress?: string;
+    deadlineAt?: number;
+    deliverGallery?: boolean;
+    deliverAlttext?: boolean;
+    deliverExpose?: boolean;
+  }): Promise<Job> {
     const id = randomUUID();
     const jobNumber = `PIX-${Date.now()}-${Math.random().toString(36).substring(2, 7).toUpperCase()}`;
     const [job] = await db
@@ -455,8 +471,13 @@ export class DatabaseStorage implements IStorage {
         id,
         jobNumber,
         userId,
-        propertyName,
-        propertyAddress,
+        customerName: data.customerName,
+        propertyName: data.propertyName,
+        propertyAddress: data.propertyAddress,
+        deadlineAt: data.deadlineAt,
+        deliverGallery: data.deliverGallery !== undefined ? (data.deliverGallery ? "true" : "false") : "true",
+        deliverAlttext: data.deliverAlttext !== undefined ? (data.deliverAlttext ? "true" : "false") : "true",
+        deliverExpose: data.deliverExpose !== undefined ? (data.deliverExpose ? "true" : "false") : "false",
         createdAt: Date.now(),
       })
       .returning();

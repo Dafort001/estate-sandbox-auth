@@ -206,8 +206,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // For now, use demo user
       const demoUser = await ensureDemoUser();
       
-      const { propertyName, propertyAddress } = req.body;
-      const job = await storage.createJob(demoUser.id, propertyName, propertyAddress);
+      const { customerName, propertyName, propertyAddress, deadlineAt, deliverGallery, deliverAlttext, deliverExpose } = req.body;
+      const job = await storage.createJob(demoUser.id, {
+        customerName,
+        propertyName,
+        propertyAddress,
+        deadlineAt,
+        deliverGallery,
+        deliverAlttext,
+        deliverExpose,
+      });
       
       res.status(201).json(job);
     } catch (error) {
@@ -241,6 +249,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting job:", error);
       res.status(500).json({ error: "Failed to get job" });
+    }
+  });
+
+  // Demo: POST /api/jobs/:id/process - Trigger demo processing (preview → caption → exposé)
+  app.post("/api/jobs/:id/process", validateUuidParam("id"), async (req: Request, res: Response) => {
+    try {
+      const job = await storage.getJob(req.params.id);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      // TODO: Implement processing logic in Tasks 5-7
+      // 1. Generate 3000px sRGB previews for all images
+      // 2. Run AI captioning (or demo captions)
+      // 3. Generate exposé
+
+      await storage.updateJobStatus(req.params.id, "processing");
+
+      res.json({ message: "Processing started", jobId: req.params.id });
+    } catch (error) {
+      console.error("Error processing job:", error);
+      res.status(500).json({ error: "Failed to process job" });
+    }
+  });
+
+  // Demo: GET /api/jobs/:id/captions - Get all captions for a job
+  app.get("/api/jobs/:id/captions", validateUuidParam("id"), async (req: Request, res: Response) => {
+    try {
+      const captions = await storage.getJobCaptions(req.params.id);
+      res.json(captions);
+    } catch (error) {
+      console.error("Error getting captions:", error);
+      res.status(500).json({ error: "Failed to get captions" });
+    }
+  });
+
+  // Demo: GET /api/jobs/:id/expose - Get exposé for a job
+  app.get("/api/jobs/:id/expose", validateUuidParam("id"), async (req: Request, res: Response) => {
+    try {
+      const expose = await storage.getJobExpose(req.params.id);
+      if (!expose) {
+        return res.status(404).json({ error: "Exposé not found" });
+      }
+      res.json(expose);
+    } catch (error) {
+      console.error("Error getting exposé:", error);
+      res.status(500).json({ error: "Failed to get exposé" });
     }
   });
   
