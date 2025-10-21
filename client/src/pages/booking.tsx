@@ -324,10 +324,15 @@ export default function Booking() {
   const totalGross = totalNet + vatAmount;
 
   const handleServiceToggle = (code: string, quantity: number) => {
-    setSelectedServices(prev => ({
-      ...prev,
-      [code]: quantity,
-    }));
+    setSelectedServices(prev => {
+      const updated = {
+        ...prev,
+        [code]: quantity,
+      };
+      // Sync to form state for validation
+      form.setValue("serviceSelections", updated, { shouldValidate: true });
+      return updated;
+    });
   };
 
   const onSubmit = (data: BookingFormData) => {
@@ -713,10 +718,10 @@ export default function Booking() {
                             onChange={field.onChange}
                             onValidated={(result: AddressValidationResult) => {
                               // Store validated address data in hidden fields
-                              form.setValue("addressLat", result.lat || "");
-                              form.setValue("addressLng", result.lng || "");
-                              form.setValue("addressPlaceId", result.placeId || "");
-                              form.setValue("addressFormatted", result.formattedAddress || "");
+                              form.setValue("addressLat", result.lat || "", { shouldValidate: true, shouldDirty: true });
+                              form.setValue("addressLng", result.lng || "", { shouldValidate: true, shouldDirty: true });
+                              form.setValue("addressPlaceId", result.placeId || "", { shouldValidate: true, shouldDirty: true });
+                              form.setValue("addressFormatted", result.formattedAddress || "", { shouldValidate: true, shouldDirty: true });
                             }}
                             label="Adresse (optional)"
                             placeholder="Straße, Hausnummer, PLZ, Stadt"
@@ -727,6 +732,12 @@ export default function Booking() {
                       </FormItem>
                     )}
                   />
+
+                  {/* Hidden fields for Google Maps data */}
+                  <FormField control={form.control} name="addressLat" render={({ field }) => <input type="hidden" {...field} />} />
+                  <FormField control={form.control} name="addressLng" render={({ field }) => <input type="hidden" {...field} />} />
+                  <FormField control={form.control} name="addressPlaceId" render={({ field }) => <input type="hidden" {...field} />} />
+                  <FormField control={form.control} name="addressFormatted" render={({ field }) => <input type="hidden" {...field} />} />
 
                   {/* Static Map Preview - shown when address is validated */}
                   {form.watch("addressLat") && form.watch("addressLng") && (
@@ -1029,7 +1040,19 @@ export default function Booking() {
                 <Button
                   size="lg"
                   onClick={() => {
-                    form.handleSubmit(onSubmit)();
+                    form.handleSubmit(
+                      (data) => {
+                        onSubmit(data);
+                      },
+                      (errors) => {
+                        console.error("Form validation failed:", errors);
+                        toast({
+                          variant: "destructive",
+                          title: "Formularfehler",
+                          description: "Bitte überprüfen Sie Ihre Eingaben. Es gibt Validierungsfehler.",
+                        });
+                      }
+                    )();
                   }}
                   disabled={createOrderMutation.isPending || !form.getValues("agbAccepted")}
                   data-testid="button-submit-order"
