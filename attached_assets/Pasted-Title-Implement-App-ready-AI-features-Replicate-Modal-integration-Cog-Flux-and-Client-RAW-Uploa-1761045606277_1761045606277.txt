@@ -1,0 +1,125 @@
+Title: Implement App-ready AI features + Replicate/Modal integration (Cog/Flux) and Client RAW Upload
+
+Scope (NEW ONLY)
+- Client pages: /client/upload, /client/ai-lab
+- Unified API for web + future iOS app (same endpoints + Bearer tokens)
+- Adapters for Replicate (and/or Modal) models incl. Cog/Flux
+
+Requirements
+
+Auth & App Readiness
+- Keep existing web session auth.
+- Add Bearer token auth for app with scopes: upload:raw, view:gallery, ai:run, order:read.
+- Expose POST /api/tokens (exchange session → short-lived PAT) and revoke via DELETE /api/tokens/:id.
+- CORS: whitelist our web domains + future iOS app scheme (deeplinks), strict preflight.
+
+RAW Upload (resumable → Cloudflare R2)
+- Endpoints:
+  - POST /api/uploads/init -> { uploadId, partUrls[], key }
+  - POST /api/uploads/complete -> finalize multipart, validate ETags + checksums
+- Accept only RAW (.CR3/.NEF/.RAF/.ARW/.DNG), enforce per-file & per-shoot quotas, rate limit, audit log.
+- Object key schema (v3.1): raw/{shoot_id}/{date}-{shootcode}_{room_type}_{index}_v{ver}/g{stack}_e{ev}.{ext}
+- After complete: enqueue downscale (3000px sRGB Q85) to previews/{shoot_id}/… for captioning.
+- Write stack sidecar JSON at …/stack_{n}.json (see Types).
+
+AI Lab (delivered images only)
+- Page: /client/ai-lab (list user’s delivered JPGs under deliveries/{shoot_id}/…)
+- Tools (initial set):
+  - upscale_x2, denoise, wb_normalize, sky_enhance, cleanup_small, keystone_fix
+- Endpoint: POST /api/ai/run
+  Body: { tool: string, model_slug: string, image_key: string, params?: object }
+- Job orchestration:
+  - Queue → call Replicate (or Modal) via adapter → webhook POST /api/ai/webhook (idempotent)
+  - Save output to deliveries/{shoot_id}/ai/{basename}_v{ver}.jpg (+ JSON sidecar with tool, model, params, cost, source_image_key, created_at)
+  - Enforce ownership: image_key must live under caller’s own deliveries/{shoot_id} prefix (no third-party images).
+- Versioning: “Apply & Save” creates v+1; keep original intact.
+- Billing: integrate with existing Stripe credits (persist in sidecar).
+
+Model Adapters (Replicate/Modal)
+- Create lib/ai/adapters.ts with registry:
+  - replicate: { slug: string, mapParams(params): Record<string, any> }
+  - modal: { endpoint: string, mapParams(...) }
+- Supported slugs (first pass; can be swapped):
+  - "replicate:upscale"  (e.g., Real-ESRGAN class of models)
+  - "replicate:denoise"
+  - "replicate:wb-normalize"
+  - "replicate:sky-enhance"
+  - "replicate:cleanup"
+  - "replicate:keystone"
+  - "replicate:flux-dev" (for generative drafts if later needed; keep behind beta flag)
+  - "replicate:cog-image-enhance" (placeholder for Cog-backed enhancers)
+- Map each UI tool → default model_slug and sensible default params.
+
+Endpoints (to implement)
+- POST /api/tokens
+- DELETE /api/tokens/:id
+- POST /api/uploads/init
+- POST /api/uploads/complete
+- POST /api/ai/run
+- POST /api/ai/webhook
+- GET  /api/gallery/:shoot_id   (already exists? reuse; else return delivered images only)
+
+UI Deliverables
+- app/routes/client/upload.tsx
+  - drag&drop, resumable list, 3/5 auto-stack grouping, progress bars, finalize, receipt
+- app/routes/client/ai-lab.tsx
+  - gallery picker (delivered only), tool cards, A/B preview (slider), “Apply & Save” (v+1), credit cost display
+
+Libraries & Helpers
+- lib/r2-multipart.ts    (init/part signing/complete helpers)
+- lib/ai/jobs.ts         (queue, status, idempotency)
+- lib/ai/adapters.ts     (Replicate/Modal registry + param mapping)
+- lib/webhooks.ts        (dedupe by jobId, safe retries)
+- lib/security/scope.ts  (enforce Bearer scopes; block cross-tenant keys)
+
+Types (summaries)
+- types/uploads.ts
+  export type StackSidecar = {
+    shoot_id: string; shoot_code: string; room_type: string;
+    stack_index: number; count: 3|5;
+    files: { key: string; size: number; checksum: string }[];
+    created_at: string;
+    uploader: { user_id: string; ip: string; agent: string };
+  };
+- types/ai.ts
+  export type AiResultSidecar = {
+    source: string; output: string; tool: string; model: string;
+    params: Record<string, any>;
+    cost: { credits: number; eur: number };
+    created_at: string;
+  };
+
+Config / Env (add to .env / Replit Secrets)
+- CF_R2_ACCESS_KEY, CF_R2_SECRET_KEY, CF_R2_BUCKET, CF_R2_ACCOUNT_ID, CF_R2_ENDPOINT
+- REPLICATE_API_TOKEN (and/or MODAL_ENDPOINT_URL + MODAL_AUTH)
+- STRIPE_SECRET_KEY
+- ALLOWED_ORIGINS (comma-sep for CORS)
+- APP_TOKEN_TTL_MIN=30 (example)
+
+Acceptance Criteria
+- RAW: A 5× stack uploads resumably, completes with verified ETags, writes stack_{n}.json and enqueues preview downscale.
+- AI: Running upscale_x2 on a delivered JPG creates deliveries/{shoot_id}/ai/{basename}_v{ver}.jpg + sidecar, ownership enforced.
+- Auth: Web sessions still work; Bearer tokens with scopes can call the same endpoints via curl; CORS is restricted to allowed origins.
+- Webhooks: Idempotent; retry-safe; no duplicate saves.
+- Tests: cover multipart finalize, scope enforcement, webhook idempotency, filename schema.
+
+Minimal curl examples
+
+# 1) Get a PAT from session (cookie-based)
+curl -X POST https://<host>/api/tokens -H "Cookie: session=..." 
+
+# 2) Init multipart upload (app token)
+curl -X POST https://<host>/api/uploads/init \
+  -H "Authorization: Bearer <PAT>" \
+  -H "Content-Type: application/json" \
+  -d '{"shoot_id":"SH12345","filename":"IMG_0001.CR3","room_type":"living_room","stack_index":1,"count":5}'
+
+# 3) Run AI tool on delivered image
+curl -X POST https://<host>/api/ai/run \
+  -H "Authorization: Bearer <PAT>" \
+  -H "Content-Type: application/json" \
+  -d '{"tool":"upscale_x2","model_slug":"replicate:upscale","image_key":"deliveries/SH12345/IMG_0001_v3.jpg","params":{"scale":2}}'
+
+Notes
+- Follow filename format v3.1; downscale previews = 3000px sRGB Q85 before captioning.
+- AI Lab must NOT accept third-party uploads; only images under the caller’s deliveries/{shoot_id}.
