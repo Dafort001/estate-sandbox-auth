@@ -38,6 +38,12 @@ export interface IStorage {
     contactEmail: string;
     contactPhone?: string;
     propertyAddress: string;
+    // Google Maps verified address data
+    addressLat?: string;
+    addressLng?: string;
+    addressPlaceId?: string;
+    addressFormatted?: string;
+    addressLocationType?: string;
     preferredDate?: string;
     notes?: string;
   }): Promise<Order>;
@@ -51,6 +57,11 @@ export interface IStorage {
     customerName?: string;
     propertyName: string;
     propertyAddress?: string;
+    // Google Maps verified address data
+    addressLat?: string;
+    addressLng?: string;
+    addressPlaceId?: string;
+    addressFormatted?: string;
     deadlineAt?: number;
     deliverGallery?: boolean;
     deliverAlttext?: boolean;
@@ -414,6 +425,12 @@ export class DatabaseStorage implements IStorage {
     contactEmail: string;
     contactPhone?: string;
     propertyAddress: string;
+    // Google Maps verified address data
+    addressLat?: string;
+    addressLng?: string;
+    addressPlaceId?: string;
+    addressFormatted?: string;
+    addressLocationType?: string;
     preferredDate?: string;
     notes?: string;
   }): Promise<Order> {
@@ -428,6 +445,12 @@ export class DatabaseStorage implements IStorage {
         contactEmail: orderData.contactEmail,
         contactPhone: orderData.contactPhone,
         propertyAddress: orderData.propertyAddress,
+        // Google Maps verified address data
+        addressLat: orderData.addressLat,
+        addressLng: orderData.addressLng,
+        addressPlaceId: orderData.addressPlaceId,
+        addressFormatted: orderData.addressFormatted,
+        addressLocationType: orderData.addressLocationType,
         preferredDate: orderData.preferredDate,
         notes: orderData.notes,
         createdAt: Date.now(),
@@ -458,6 +481,11 @@ export class DatabaseStorage implements IStorage {
     customerName?: string;
     propertyName: string;
     propertyAddress?: string;
+    // Google Maps verified address data
+    addressLat?: string;
+    addressLng?: string;
+    addressPlaceId?: string;
+    addressFormatted?: string;
     deadlineAt?: number;
     deliverGallery?: boolean;
     deliverAlttext?: boolean;
@@ -474,6 +502,11 @@ export class DatabaseStorage implements IStorage {
         customerName: data.customerName,
         propertyName: data.propertyName,
         propertyAddress: data.propertyAddress,
+        // Google Maps verified address data
+        addressLat: data.addressLat || null,
+        addressLng: data.addressLng || null,
+        addressPlaceId: data.addressPlaceId || null,
+        addressFormatted: data.addressFormatted || null,
         deadlineAt: data.deadlineAt,
         deliverGallery: data.deliverGallery !== undefined ? (data.deliverGallery ? "true" : "false") : "true",
         deliverAlttext: data.deliverAlttext !== undefined ? (data.deliverAlttext ? "true" : "false") : "true",
@@ -774,6 +807,11 @@ export class DatabaseStorage implements IStorage {
     contactMobile: string;
     propertyName: string;
     propertyAddress?: string;
+    // Google Maps verified address data
+    addressLat?: string;
+    addressLng?: string;
+    addressPlaceId?: string;
+    addressFormatted?: string;
     propertyType?: string;
     preferredDate?: string;
     preferredTime?: string;
@@ -799,6 +837,11 @@ export class DatabaseStorage implements IStorage {
         contactMobile: bookingData.contactMobile,
         propertyName: bookingData.propertyName,
         propertyAddress: bookingData.propertyAddress || null,
+        // Google Maps verified address data
+        addressLat: bookingData.addressLat || null,
+        addressLng: bookingData.addressLng || null,
+        addressPlaceId: bookingData.addressPlaceId || null,
+        addressFormatted: bookingData.addressFormatted || null,
         propertyType: bookingData.propertyType || null,
         preferredDate: bookingData.preferredDate || null,
         preferredTime: bookingData.preferredTime || null,

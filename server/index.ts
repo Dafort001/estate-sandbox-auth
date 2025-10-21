@@ -711,6 +711,11 @@ app.post("/api/orders", async (c) => {
       contactMobile: orderData.contact.mobile,
       propertyName: orderData.propertyName,
       propertyAddress: orderData.propertyAddress,
+      // Google Maps verified address data
+      addressLat: orderData.addressLat,
+      addressLng: orderData.addressLng,
+      addressPlaceId: orderData.addressPlaceId,
+      addressFormatted: orderData.addressFormatted,
       propertyType: orderData.propertyType,
       preferredDate: orderData.preferredDate,
       preferredTime: orderData.preferredTime,

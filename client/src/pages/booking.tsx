@@ -17,6 +17,9 @@ import { Label } from "@/components/ui/label";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, ArrowRight, Check, AlertCircle } from "lucide-react";
+import { AddressAutocomplete } from "@/components/AddressAutocomplete";
+import type { AddressValidationResult } from "@/components/AddressAutocomplete";
+import { StaticMapThumbnail } from "@/components/StaticMapThumbnail";
 
 // Service types matching JSON structure
 interface ServiceData {
@@ -75,6 +78,11 @@ const bookingSchema = z.object({
       (addr) => !addr || addr.length === 0 || germanPostalCodeRegex.test(addr),
       { message: "Adresse muss eine gültige Postleitzahl (5 Ziffern) enthalten" }
     ),
+  // Google Maps verified address data (hidden fields)
+  addressLat: z.string().optional(),
+  addressLng: z.string().optional(),
+  addressPlaceId: z.string().optional(),
+  addressFormatted: z.string().optional(),
   propertyType: z.string().optional(),
   preferredDate: z.string().optional(),
   preferredTime: z.string().optional(),
@@ -185,6 +193,10 @@ export default function Booking() {
       contactMobile: "",
       propertyName: "",
       propertyAddress: "",
+      addressLat: "",
+      addressLng: "",
+      addressPlaceId: "",
+      addressFormatted: "",
       propertyType: "",
       preferredDate: "",
       preferredTime: "",
@@ -221,6 +233,11 @@ export default function Booking() {
         },
         propertyName: data.propertyName,
         propertyAddress: data.propertyAddress,
+        // Google Maps verified address data
+        addressLat: data.addressLat,
+        addressLng: data.addressLng,
+        addressPlaceId: data.addressPlaceId,
+        addressFormatted: data.addressFormatted,
         propertyType: data.propertyType,
         preferredDate: data.preferredDate,
         preferredTime: data.preferredTime,
@@ -669,18 +686,37 @@ export default function Booking() {
                     name="propertyAddress"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Adresse</FormLabel>
                         <FormControl>
-                          <Textarea 
-                            placeholder="Musterstraße 123, 10115 Berlin (optional, für Fälle ohne Google-Listing)" 
-                            {...field} 
-                            data-testid="input-property-address"
+                          <AddressAutocomplete
+                            value={field.value || ""}
+                            onChange={field.onChange}
+                            onValidated={(result: AddressValidationResult) => {
+                              // Store validated address data in hidden fields
+                              form.setValue("addressLat", result.lat || "");
+                              form.setValue("addressLng", result.lng || "");
+                              form.setValue("addressPlaceId", result.placeId || "");
+                              form.setValue("addressFormatted", result.formattedAddress || "");
+                            }}
+                            label="Adresse (optional)"
+                            placeholder="Straße, Hausnummer, PLZ, Stadt"
+                            testId="input-property-address"
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+
+                  {/* Static Map Preview - shown when address is validated */}
+                  {form.watch("addressLat") && form.watch("addressLng") && (
+                    <StaticMapThumbnail
+                      lat={form.watch("addressLat") || ""}
+                      lng={form.watch("addressLng") || ""}
+                      address={form.watch("addressFormatted") || form.watch("propertyAddress") || ""}
+                      showAddress={true}
+                      className="mt-2"
+                    />
+                  )}
 
                   <FormField
                     control={form.control}

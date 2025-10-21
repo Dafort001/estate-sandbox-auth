@@ -269,6 +269,11 @@ export const bookings = pgTable("bookings", {
   contactMobile: varchar("contact_mobile", { length: 50 }).notNull(), // Required
   propertyName: varchar("property_name", { length: 255 }).notNull(),
   propertyAddress: text("property_address"), // Optional (for cases without Google listing)
+  // Google Maps verified address data
+  addressLat: varchar("address_lat", { length: 50 }), // Latitude from Google Geocoding
+  addressLng: varchar("address_lng", { length: 50 }), // Longitude from Google Geocoding
+  addressPlaceId: varchar("address_place_id", { length: 255 }), // Google Place ID for verified address
+  addressFormatted: text("address_formatted"), // Formatted address from Google
   propertyType: varchar("property_type", { length: 100 }), // 'Wohnung', 'Haus', 'Gewerbe'
   preferredDate: varchar("preferred_date", { length: 50 }),
   preferredTime: varchar("preferred_time", { length: 50 }),
@@ -665,6 +670,11 @@ export const createOrderApiSchema = z.object({
       (addr) => !addr || addr.length === 0 || germanPostalCodeRegex.test(addr),
       { message: "Address must contain a valid German postal code (5 digits)" }
     ),
+  // Google Maps verified address data (optional)
+  addressLat: z.string().optional(),
+  addressLng: z.string().optional(),
+  addressPlaceId: z.string().optional(),
+  addressFormatted: z.string().optional(),
   propertyType: z.string().optional(),
   preferredDate: z.string().optional(),
   preferredTime: z.string().optional(),
