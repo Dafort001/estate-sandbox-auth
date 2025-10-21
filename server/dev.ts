@@ -3,6 +3,8 @@ import { createServer } from "http";
 import { setupVite } from "./vite";
 import { registerRoutes } from "./routes";
 import { scheduleCleanup } from "./cleanup";
+import { getStorage } from "./storage";
+import { seedDemoJobs } from "./seed-demo-jobs";
 
 const app = express();
 const server = createServer(app);
@@ -73,6 +75,10 @@ async function startDevServer() {
 
   // Schedule cleanup job to remove orphaned temp files every 6 hours
   scheduleCleanup(6, 6);
+
+  // Seed demo jobs on startup (only if database is empty)
+  const storage = getStorage();
+  await seedDemoJobs(storage);
 
   server.listen(port, () => {
     console.log(`🚀 Dev server running on http://localhost:${port}`);
