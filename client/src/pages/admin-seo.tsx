@@ -46,7 +46,7 @@ export default function AdminSeo() {
 
   const saveMutation = useMutation({
     mutationFn: async (data: EditingMetadata) => {
-      return await apiRequest("/api/seo-metadata", "POST", data);
+      return await apiRequest("POST", "/api/seo-metadata", data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/seo-metadata"] });
@@ -68,7 +68,7 @@ export default function AdminSeo() {
 
   const deleteMutation = useMutation({
     mutationFn: async (pagePath: string) => {
-      return await apiRequest(`/api/seo-metadata/${encodeURIComponent(pagePath)}`, "DELETE");
+      return await apiRequest("DELETE", `/api/seo-metadata/${encodeURIComponent(pagePath)}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/seo-metadata"] });
