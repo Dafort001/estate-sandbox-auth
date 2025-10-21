@@ -44,6 +44,12 @@ export const orders = pgTable("orders", {
   contactEmail: varchar("contact_email", { length: 255 }).notNull(),
   contactPhone: varchar("contact_phone", { length: 50 }),
   propertyAddress: text("property_address").notNull(),
+  // Google Maps verified address data
+  addressLat: varchar("address_lat", { length: 50 }), // Latitude from Google Geocoding
+  addressLng: varchar("address_lng", { length: 50 }), // Longitude from Google Geocoding
+  addressPlaceId: varchar("address_place_id", { length: 255 }), // Google Place ID for verified address
+  addressFormatted: text("address_formatted"), // Formatted address from Google
+  addressLocationType: varchar("address_location_type", { length: 50 }), // 'ROOFTOP', 'RANGE_INTERPOLATED', etc.
   preferredDate: varchar("preferred_date", { length: 50 }),
   notes: text("notes"),
   status: varchar("status", { length: 50 }).notNull().default("pending"), // 'pending', 'confirmed', 'completed', 'cancelled'
@@ -57,6 +63,11 @@ export const jobs = pgTable("jobs", {
   customerName: varchar("customer_name", { length: 255 }), // Name of the ordering customer/agency
   propertyName: varchar("property_name", { length: 255 }).notNull(), // Property/listing name
   propertyAddress: text("property_address"), // Property address
+  // Google Maps verified address data
+  addressLat: varchar("address_lat", { length: 50 }), // Latitude from Google Geocoding
+  addressLng: varchar("address_lng", { length: 50 }), // Longitude from Google Geocoding
+  addressPlaceId: varchar("address_place_id", { length: 255 }), // Google Place ID for verified address
+  addressFormatted: text("address_formatted"), // Formatted address from Google
   status: varchar("status", { length: 50 }).notNull().default("created"), // Demo: 'uploaded', 'processing', 'captioned', 'expose_ready', 'delivered'
   deadlineAt: bigint("deadline_at", { mode: "number" }), // Optional deadline
   deliverGallery: varchar("deliver_gallery", { length: 10 }).notNull().default("true"),
