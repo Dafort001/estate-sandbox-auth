@@ -355,13 +355,34 @@ export default function Booking() {
             <h1 className="text-xl font-semibold" data-testid="heading-booking">Neue Bestellung</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Badge variant={step === 1 ? "default" : "outline"} data-testid="badge-step-1">
+            <Badge 
+              variant={step === 1 ? "default" : "outline"} 
+              data-testid="badge-step-1"
+              className={step > 1 ? "cursor-pointer hover-elevate" : ""}
+              onClick={() => step > 1 && setStep(1)}
+            >
               1. Leistungen
             </Badge>
-            <Badge variant={step === 2 ? "default" : "outline"} data-testid="badge-step-2">
+            <Badge 
+              variant={step === 2 ? "default" : "outline"} 
+              data-testid="badge-step-2"
+              className={step !== 2 ? "cursor-pointer hover-elevate" : ""}
+              onClick={() => {
+                // Can only go to step 2 if step 1 is valid
+                if (step === 1 && selectedCount > 0 && watchRegion) {
+                  setStep(2);
+                } else if (step > 2) {
+                  setStep(2);
+                }
+              }}
+            >
               2. Details
             </Badge>
-            <Badge variant={step === 3 ? "default" : "outline"} data-testid="badge-step-3">
+            <Badge 
+              variant={step === 3 ? "default" : "outline"} 
+              data-testid="badge-step-3"
+              className={step !== 3 ? "cursor-not-allowed opacity-50" : ""}
+            >
               3. Prüfen
             </Badge>
           </div>
