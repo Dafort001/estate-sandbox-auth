@@ -9,6 +9,8 @@ export const users = pgTable("users", {
   email: varchar("email", { length: 255 }).notNull().unique(),
   hashedPassword: text("hashed_password").notNull(),
   role: varchar("role", { length: 20 }).notNull().default("client"), // 'client' or 'admin'
+  credits: bigint("credits", { mode: "number" }).notNull().default(0), // AI processing credits
+  stripeCustomerId: varchar("stripe_customer_id", { length: 255 }),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 

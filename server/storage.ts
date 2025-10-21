@@ -1315,6 +1315,41 @@ export class DatabaseStorage implements IStorage {
       .orderBy(desc(aiJobs.createdAt));
     return jobs;
   }
+
+  async getUserCredits(userId: string): Promise<number> {
+    const [user] = await db
+      .select({ credits: users.credits })
+      .from(users)
+      .where(eq(users.id, userId));
+    return user?.credits || 0;
+  }
+
+  async addCredits(userId: string, amount: number): Promise<void> {
+    const currentCredits = await this.getUserCredits(userId);
+    await db
+      .update(users)
+      .set({ credits: currentCredits + amount })
+      .where(eq(users.id, userId));
+  }
+
+  async deductCredits(userId: string, amount: number): Promise<boolean> {
+    const currentCredits = await this.getUserCredits(userId);
+    if (currentCredits < amount) {
+      return false;
+    }
+    await db
+      .update(users)
+      .set({ credits: currentCredits - amount })
+      .where(eq(users.id, userId));
+    return true;
+  }
+
+  async updateStripeCustomerId(userId: string, stripeCustomerId: string): Promise<void> {
+    await db
+      .update(users)
+      .set({ stripeCustomerId })
+      .where(eq(users.id, userId));
+  }
 }
 
 export const storage = new DatabaseStorage();

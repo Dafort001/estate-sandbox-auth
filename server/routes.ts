@@ -12,6 +12,12 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { upload, processUploadedFiles } from "./uploadHandler";
 import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
+import Stripe from "stripe";
+
+// Initialize Stripe from Replit's Stripe integration
+const stripe = process.env.STRIPE_SECRET_KEY 
+  ? new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: "2023-10-16" })
+  : null;
 import { scheduleEditorReturnProcessing, scheduleAICaptioning } from "./backgroundQueue";
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
 import { generatePresignedPutUrl, generateObjectPath } from "./objectStorage";
@@ -833,6 +839,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid tool ID" });
       }
 
+      const userCredits = await storage.getUserCredits(user.id);
+      if (userCredits < tool.creditsPerImage) {
+        return res.status(402).json({ 
+          error: "Insufficient credits",
+          required: tool.creditsPerImage,
+          current: userCredits,
+        });
+      }
+
       const webhookUrl = `${process.env.BASE_URL || "https://pix.immo"}/api/ai/webhook`;
       
       const sourceImageUrl = `https://${process.env.CF_R2_BUCKET}.r2.cloudflarestorage.com/${sourceImageKey}`;
@@ -886,6 +901,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const cost = tool?.costPerImage || 0;
         const credits = tool?.creditsPerImage || 0;
 
+        const deducted = await storage.deductCredits(aiJob.userId, credits);
+        if (!deducted) {
+          console.error(`Failed to deduct ${credits} credits from user ${aiJob.userId} for job ${aiJob.id}`);
+        }
+
         await storage.completeAIJob(aiJob.id, outputKey, cost, credits);
 
         res.json({ success: true });
@@ -930,6 +950,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching AI jobs:", error);
       res.status(500).json({ error: "Failed to fetch AI jobs" });
+    }
+  });
+
+  // Credit billing endpoints - using Stripe integration from blueprint:javascript_stripe
+  app.get("/api/credits/balance", async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const credits = await storage.getUserCredits(user.id);
+      res.json({ credits });
+    } catch (error) {
+      console.error("Error fetching credits:", error);
+      res.status(500).json({ error: "Failed to fetch credits" });
+    }
+  });
+
+  const createPaymentSchema = z.object({
+    credits: z.number().int().min(100).max(10000),
+  });
+
+  app.post("/api/credits/purchase", validateBody(createPaymentSchema), async (req: Request, res: Response) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: "Payment system not configured" });
+      }
+
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { credits } = req.body;
+      const pricePerCredit = 0.01;
+      const amount = Math.round(credits * pricePerCredit * 100);
+
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount,
+        currency: "eur",
+        metadata: {
+          userId: user.id,
+          credits: credits.toString(),
+        },
+      });
+
+      res.json({ 
+        clientSecret: paymentIntent.client_secret,
+        amount,
+        credits,
+      });
+    } catch (error) {
+      console.error("Error creating payment intent:", error);
+      res.status(500).json({ error: "Failed to create payment intent" });
+    }
+  });
+
+  app.post("/api/credits/webhook", async (req: Request, res: Response) => {
+    try {
+      if (!stripe) {
+        return res.status(503).json({ error: "Payment system not configured" });
+      }
+
+      const sig = req.headers["stripe-signature"];
+      if (!sig) {
+        return res.status(400).json({ error: "Missing signature" });
+      }
+
+      const event = stripe.webhooks.constructEvent(
+        req.body,
+        sig,
+        process.env.STRIPE_WEBHOOK_SECRET || ""
+      );
+
+      if (event.type === "payment_intent.succeeded") {
+        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const { userId, credits } = paymentIntent.metadata;
+
+        if (userId && credits) {
+          await storage.addCredits(userId, parseInt(credits, 10));
+          console.log(`Added ${credits} credits to user ${userId}`);
+        }
+      }
+
+      res.json({ received: true });
+    } catch (error) {
+      console.error("Error processing Stripe webhook:", error);
+      res.status(400).json({ error: "Webhook error" });
     }
   });
 
