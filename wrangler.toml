@@ -1,0 +1,47 @@
+name = "pix-immo"
+main = "server/index.ts"
+compatibility_date = "2024-01-01"
+node_compat = true
+
+# Development environment
+[env.development]
+name = "pix-immo-dev"
+vars = { APP_ENV = "development", NODE_ENV = "development" }
+
+# Production environment
+[env.production]
+name = "pix-immo"
+vars = { APP_ENV = "production", NODE_ENV = "production" }
+
+# R2 Bucket bindings (for object storage)
+# [[r2_buckets]]
+# binding = "IMAGES_BUCKET"
+# bucket_name = "pix-immo-images"
+# preview_bucket_name = "pix-immo-images-dev"
+
+# KV Namespace bindings (for session storage if needed)
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "YOUR_KV_NAMESPACE_ID"
+# preview_id = "YOUR_DEV_KV_NAMESPACE_ID"
+
+# Environment secrets (set via: wrangler secret put SECRET_NAME)
+# Required secrets:
+# - DATABASE_URL
+# - SESSION_SECRET
+# - JWT_SECRET
+# - MAILGUN_API_KEY (optional, for email notifications)
+# - REPLICATE_API_KEY (optional, for AI captioning)
+# - MODAL_API_KEY (optional, for image analysis)
+
+# Build configuration
+[build]
+command = "npm run build"
+
+# Compatibility flags
+[compatibility_flags]
+
+# Routes (configure your custom domain here)
+# [[env.production.routes]]
+# pattern = "pix.immo/*"
+# zone_name = "pix.immo"

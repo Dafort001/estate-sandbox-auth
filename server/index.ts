@@ -2077,9 +2077,20 @@ app.get("/api/editorial/:id/comments", async (c) => {
   }
 });
 
-// Health check
+// Health check endpoint (legacy, kept for backwards compatibility)
 app.get("/api/health", (c) => {
   return c.json({ status: "ok", timestamp: Date.now() });
+});
+
+// Healthz endpoint for monitoring and CI/CD
+app.get("/healthz", (c) => {
+  return c.json({
+    status: "ok",
+    env: process.env.NODE_ENV || "development",
+    timestamp: new Date().toISOString(),
+    service: "pix.immo",
+    version: "1.0.0",
+  });
 });
 
 // Start server with async initialization (production mode)

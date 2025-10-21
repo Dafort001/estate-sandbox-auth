@@ -528,6 +528,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Healthz endpoint for monitoring and CI/CD
+  app.get("/healthz", (req, res) => {
+    res.json({
+      status: "ok",
+      env: process.env.NODE_ENV || "development",
+      timestamp: new Date().toISOString(),
+      service: "pix.immo",
+      version: "1.0.0",
+    });
+  });
+
   const httpServer = createServer(app);
 
   return httpServer;
