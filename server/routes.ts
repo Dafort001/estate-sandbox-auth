@@ -1037,6 +1037,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // - POST /api/credits/purchase
   // - POST /api/credits/webhook
 
+  // ========================================
+  // Google Maps API Routes
+  // ========================================
+
+  /**
+   * POST /api/google/geocode
+   * Validate and geocode an address using Google Geocoding API
+   * Returns verified coordinates and place ID
+   */
+  app.post("/api/google/geocode", async (req: Request, res: Response) => {
+    try {
+      const { address } = req.body;
+
+      if (!address || typeof address !== 'string' || address.trim().length < 5) {
+        return res.status(400).json({ error: "Valid address required" });
+      }
+
+      // Check if API key is configured
+      if (!process.env.GOOGLE_MAPS_API_KEY) {
+        return res.status(503).json({ error: "Google Maps API not configured" });
+      }
+
+      const { validateAddress } = await import("./google-maps");
+      const result = await validateAddress(address.trim());
+
+      if (!result.isValid) {
+        return res.status(404).json({ 
+          error: result.error || "Address not found",
+          isValid: false,
+        });
+      }
+
+      res.json({
+        isValid: true,
+        isRooftop: result.isRooftop,
+        lat: result.lat,
+        lng: result.lng,
+        placeId: result.placeId,
+        formattedAddress: result.formattedAddress,
+        locationType: result.locationType,
+      });
+    } catch (error) {
+      console.error("Error geocoding address:", error);
+      res.status(500).json({ error: "Failed to geocode address" });
+    }
+  });
+
+  /**
+   * GET /api/google/static-map
+   * Generate a Google Static Maps URL for a thumbnail
+   * Query params: lat, lng, width (optional), height (optional), zoom (optional)
+   */
+  app.get("/api/google/static-map", async (req: Request, res: Response) => {
+    try {
+      const { lat, lng, width, height, zoom } = req.query;
+
+      if (!lat || !lng) {
+        return res.status(400).json({ error: "lat and lng required" });
+      }
+
+      // Check if API key is configured
+      if (!process.env.GOOGLE_MAPS_API_KEY) {
+        return res.status(503).json({ error: "Google Maps API not configured" });
+      }
+
+      const { getStaticMapUrl } = await import("./google-maps");
+      
+      const mapUrl = getStaticMapUrl(
+        parseFloat(lat as string),
+        parseFloat(lng as string),
+        {
+          width: width ? parseInt(width as string) : 400,
+          height: height ? parseInt(height as string) : 200,
+          zoom: zoom ? parseInt(zoom as string) : 17,
+          mapType: 'satellite',
+        }
+      );
+
+      if (!mapUrl) {
+        return res.status(503).json({ error: "Failed to generate map URL" });
+      }
+
+      res.json({ url: mapUrl });
+    } catch (error) {
+      console.error("Error generating static map:", error);
+      res.status(500).json({ error: "Failed to generate static map" });
+    }
+  });
+
   // Healthz endpoint for monitoring and CI/CD
   app.get("/healthz", (req, res) => {
     res.json({
