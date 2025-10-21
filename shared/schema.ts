@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { pgTable, varchar, text, bigint } from "drizzle-orm/pg-core";
+import { pgTable, varchar, text, bigint, boolean } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { relations } from "drizzle-orm";
 
@@ -54,13 +54,14 @@ export const jobs = pgTable("jobs", {
   id: varchar("id").primaryKey(),
   jobNumber: varchar("job_number", { length: 50 }).notNull().unique(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  propertyName: varchar("property_name", { length: 255 }).notNull(), // customer
-  propertyAddress: text("property_address"), // address
+  customerName: varchar("customer_name", { length: 255 }), // Name of the ordering customer/agency
+  propertyName: varchar("property_name", { length: 255 }).notNull(), // Property/listing name
+  propertyAddress: text("property_address"), // Property address
   status: varchar("status", { length: 50 }).notNull().default("created"), // Demo: 'uploaded', 'processing', 'captioned', 'expose_ready', 'delivered'
   deadlineAt: bigint("deadline_at", { mode: "number" }), // Optional deadline
-  deliverGallery: varchar("deliver_gallery", { length: 5 }).notNull().default("true"), // 'true' or 'false'
-  deliverAlttext: varchar("deliver_alttext", { length: 5 }).notNull().default("true"),
-  deliverExpose: varchar("deliver_expose", { length: 5 }).notNull().default("false"),
+  deliverGallery: varchar("deliver_gallery", { length: 10 }).notNull().default("true"),
+  deliverAlttext: varchar("deliver_alttext", { length: 10 }).notNull().default("true"),
+  deliverExpose: varchar("deliver_expose", { length: 10 }).notNull().default("false"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 

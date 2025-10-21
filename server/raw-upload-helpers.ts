@@ -248,3 +248,189 @@ export function validateChunkSize(chunkSize: number): { valid: boolean; error?: 
 
   return { valid: true };
 }
+
+// Stack Detection for Exposure Bracketing
+export interface StackDefinition {
+  stackNumber: string; // e.g., 'g001'
+  roomType: string;
+  frameCount: number; // 3 or 5
+  files: {
+    filename: string;
+    exposureValue: string;
+    positionInStack: number; // 0-indexed (0, 1, 2 for 3-frame; 0, 1, 2, 3, 4 for 5-frame)
+  }[];
+}
+
+export interface StackDetectionResult {
+  stacks: StackDefinition[];
+  errors: string[];
+  warnings: string[];
+}
+
+export function detectStacks(filenames: string[]): StackDetectionResult {
+  const stacks = new Map<string, StackDefinition>();
+  const errors: string[] = [];
+  const warnings: string[] = [];
+
+  for (const filename of filenames) {
+    const components = parseFilenameV31(filename);
+    
+    if (!components) {
+      errors.push(`Invalid filename format: ${filename}`);
+      continue;
+    }
+
+    const stackKey = `${components.roomType}_${components.stackNumber}`;
+    
+    if (!stacks.has(stackKey)) {
+      stacks.set(stackKey, {
+        stackNumber: components.stackNumber,
+        roomType: components.roomType,
+        frameCount: 0,
+        files: [],
+      });
+    }
+
+    const stack = stacks.get(stackKey)!;
+    
+    // Determine position in stack based on exposure value
+    // Expected sequences:
+    // 3-frame: e-2, e0, e+2 (positions 0, 1, 2)
+    // 5-frame: e-4, e-2, e0, e+2, e+4 (positions 0, 1, 2, 3, 4)
+    const positionMap: Record<string, number> = {
+      'e-4': 0,
+      'e-2': 1,
+      'e0': 2,
+      'e+2': 3,
+      'e+4': 4,
+    };
+
+    // For 3-frame stacks, adjust positions
+    const positionMapThreeFrame: Record<string, number> = {
+      'e-2': 0,
+      'e0': 1,
+      'e+2': 2,
+    };
+
+    // Try 5-frame first, fall back to 3-frame
+    let position = positionMap[components.exposureValue];
+    
+    stack.files.push({
+      filename,
+      exposureValue: components.exposureValue,
+      positionInStack: position ?? -1, // Will be corrected later
+    });
+  }
+
+  // Validate and finalize stacks
+  for (const [stackKey, stack] of Array.from(stacks.entries())) {
+    stack.frameCount = stack.files.length;
+
+    // Validate frame count (must be 3 or 5)
+    if (stack.frameCount !== 3 && stack.frameCount !== 5) {
+      warnings.push(
+        `Stack ${stack.stackNumber} in ${stack.roomType} has ${stack.frameCount} frames (expected 3 or 5)`
+      );
+    }
+
+    // Correct positions for 3-frame stacks
+    if (stack.frameCount === 3) {
+      const positionMapThreeFrame: Record<string, number> = {
+        'e-2': 0,
+        'e0': 1,
+        'e+2': 2,
+      };
+      
+      for (const file of stack.files) {
+        file.positionInStack = positionMapThreeFrame[file.exposureValue] ?? -1;
+        if (file.positionInStack === -1) {
+          errors.push(
+            `Invalid exposure value ${file.exposureValue} for 3-frame stack ${stack.stackNumber}`
+          );
+        }
+      }
+    } else if (stack.frameCount === 5) {
+      // Verify all expected exposure values are present
+      const expectedExposures = ['e-4', 'e-2', 'e0', 'e+2', 'e+4'];
+      const presentExposures = stack.files.map((f: { exposureValue: string }) => f.exposureValue).sort();
+      const missing = expectedExposures.filter((e: string) => !presentExposures.includes(e));
+      
+      if (missing.length > 0) {
+        warnings.push(
+          `Stack ${stack.stackNumber} missing exposure values: ${missing.join(', ')}`
+        );
+      }
+    }
+
+    // Sort files by position
+    stack.files.sort((a: { positionInStack: number }, b: { positionInStack: number }) => a.positionInStack - b.positionInStack);
+  }
+
+  return {
+    stacks: Array.from(stacks.values()),
+    errors,
+    warnings,
+  };
+}
+
+// Helper to group files by shoot and validate consistency
+export interface ShootValidationResult {
+  valid: boolean;
+  shootCode?: string;
+  jobNumber?: string;
+  photographer?: string;
+  date?: string;
+  errors: string[];
+}
+
+export function validateShootConsistency(filenames: string[]): ShootValidationResult {
+  if (filenames.length === 0) {
+    return { valid: false, errors: ['No files provided'] };
+  }
+
+  const errors: string[] = [];
+  let shootCode: string | undefined;
+  let jobNumber: string | undefined;
+  let photographer: string | undefined;
+  let date: string | undefined;
+
+  for (const filename of filenames) {
+    const components = parseFilenameV31(filename);
+    
+    if (!components) {
+      errors.push(`Invalid filename: ${filename}`);
+      continue;
+    }
+
+    // First file sets the baseline
+    if (!shootCode) {
+      shootCode = components.shootCode;
+      jobNumber = components.jobNumber;
+      photographer = components.photographer;
+      date = components.date;
+    } else {
+      // Subsequent files must match
+      if (components.shootCode !== shootCode) {
+        errors.push(`Shoot code mismatch: ${filename} has ${components.shootCode}, expected ${shootCode}`);
+      }
+      if (components.jobNumber !== jobNumber) {
+        errors.push(`Job number mismatch: ${filename} has ${components.jobNumber}, expected ${jobNumber}`);
+      }
+      if (components.photographer !== photographer) {
+        errors.push(`Photographer mismatch: ${filename} has ${components.photographer}, expected ${photographer}`);
+      }
+      if (components.date !== date) {
+        errors.push(`Date mismatch: ${filename} has ${components.date}, expected ${date}`);
+      }
+    }
+  }
+
+  return {
+    valid: errors.length === 0,
+    shootCode,
+    jobNumber,
+    photographer,
+    date,
+    errors,
+  };
+}
