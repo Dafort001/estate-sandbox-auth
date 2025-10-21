@@ -1,0 +1,116 @@
+Replit Operator Brief — pix.immo / Demo-Phase (ohne Stripe & TidyCal)
+0) Rahmen
+
+ENV: ENV=staging, DEMO_MODE=true
+
+Ziel: End-to-End klickbarer Demo-Workflow: Upload → Preview (3000px sRGB) → Caption/Exposé (Dummy) → Galerie/Downloads → Editor-Rücklauf.
+
+Out of scope: Zahlungen, Terminbuchung (nur Stubs).
+
+1) Deliverables (konkret)
+
+[CREATE PAGE] /upload
+[CREATE PAGE] /jobs
+[CREATE PAGE] /job/:id
+[CREATE PAGE] /editor
+[CREATE PAGE] /gallery/:jobId
+[CREATE ROUTE] /healthz (Status/Version/ENV)
+
+[ENABLE STORAGE] R2 Upload/Download aktiv (RAW & Preview).
+[IMPLEMENT] Downscale auf 3000px sRGB vor Captioning.
+[IMPLEMENT] Stack-Erkennung 3er/5er (RAW-Belichtungsreihen).
+[IMPLEMENT] Demo-Captioning + Demo-Exposé (deutsche Dummy-Texte).
+[EXPORT] Alt-Texte als .txt und .json (CRM-kompatibel).
+[LINKS] Signierte Links: Editor-Download (Originale/Previews) & Editor-Upload (ZIP).
+[LOGGING] Request-Logging (req_id, route, status, duration).
+
+2) Seiten – Funktionsumfang (Kurzcheck)
+
+/upload: Pflichtfelder (Kunde, Adresse, Shoot-Code (5), Deadline optional), Drag&Drop, Progress, Stack-Counter, klare Fehler.
+
+/jobs: Tabelle mit Filter/Suche; Status-Badges: uploaded → processing → captioned → expose_ready → delivered.
+
+/job/:id: Metadaten, Asset-Liste (Stacks), Prozess-Log, Aktionen: Preview erzeugen, Caption simulieren, Exposé simulieren, Galerie öffnen.
+
+/editor: Button „signierten Download-Link erstellen“, Feld „ZIP zurückladen“, Status „received“.
+
+/gallery/:jobId: Kachelansicht; Download alt-text.txt & alt-text.json; Hinweis „No WhatsApp – E-Mail + SMS“.
+
+3) API – Verträge (nur Verhalten, keine Implementierung)
+
+[POST] /api/jobs → Job anlegen (validiert; Defaults).
+[POST] /api/jobs/:id/upload → Multipart, R2-Write, Stack-Erkennung.
+[POST] /api/jobs/:id/process/preview → Downscale → preview/.
+[POST] /api/jobs/:id/process/caption → DEMO: 1–2 s Delay; pro Asset caption_text, room_type, confidence.
+[POST] /api/jobs/:id/process/expose → DEMO: Kurzexposé + Highlights (de).
+[GET] /api/jobs | /api/jobs/:id → Status + Details.
+[GET] /api/jobs/:id/alt-text.txt → text/plain, 1 Zeile pro Bild.
+[GET] /api/jobs/:id/alt-text.json → Array {filename, alt_text, room_type}.
+[POST] /api/editor/:id/request-download → Signierter GET-Link.
+[POST] /api/editor/:id/return → Signierter PUT/POST-Link (ZIP), Status auf editor_returned.
+[GET] /healthz → { ok, env, version, time }.
+
+Stubs im DEMO_MODE:
+/api/payments/checkout → { demo:true, status:"skipped" }
+/api/scheduling/create → { demo:true, status:"skipped" }
+
+4) Daten & Pfade (Minimalmodell)
+
+Job: id, customer, address, shoot_code(5), deadline_at, status, deliver_gallery, deliver_alttext, deliver_expose, created_at
+
+Asset: id, job_id, r2_key, filename, filesize, mime, stack_group(g001…), ev, preview_key?
+
+Caption: asset_id, caption_text, room_type, confidence, language="de", version
+
+Expose: job_id, summary, highlights[], neighborhood?, tech_details?, word_count, version
+
+R2-Konventionen (v3.1):
+
+RAW: raw/{job_id}/g{stack}/g001_e-2.CR3 …
+
+Preview: preview/{job_id}/… (3000px sRGB, Q85)
+
+Final JPEG: {date}-{shootcode}_{room_type}_{index}_v{ver}.jpg
+Beispiel: 2025-10-21-AB123_wohnzimmer_01_v1.jpg
+
+5) Demo-Seed (zum „Anfassen“)
+
+[SEED] 3 Jobs (Stati: uploaded, captioned, delivered).
+[SEED] je Job 12 Assets (4 Stacks × 3 EV), Räume gemischt: wohnzimmer, küche, bad, schlafzimmer, undefined_space.
+[SEED] Plausible Dummy-Captions und kurzes Exposé (de).
+
+6) Acceptance (Definition of Done)
+
+Upload 3er und 5er Reihen: korrekt gruppiert; Abbruch → Resume möglich.
+
+Previews werden erzeugt und sind in R2 (preview/) abrufbar.
+
+Demo-Captioning erzeugt lesbare Alt-Texte (de) in UI und Export.
+
+Demo-Exposé erscheint im Job-Detail; enthält Highlights.
+
+Galerie zeigt Thumbnails; Downloads .txt und .json funktionieren.
+
+Editor-Downloadlink & -Uploadlink sind signiert und zeitlich begrenzt; Rücklauf setzt Status.
+
+/healthz gibt ok=true, ENV=staging, Version/Commit & Zeit aus.
+
+Request-Logs enthalten req_id, route, status, duration (sichtbar in Console/Logs).
+
+7) Qualitätsleitplanken
+
+Keine hart verdrahteten Domains; Base-URL zentral konfiguriert.
+
+Alle ENV-Werte kapseln (später Wrangler-Bindings kompatibel).
+
+Export-Formate .txt & .json CRM-kompatibel (FIO, onOffice, Propstack).
+
+UX: klare Fehler-States, sichtbarer Fortschritt, keine „stille“ Fehler.
+
+8) Blocker/Fragen (falls nötig)
+
+Bestätigung R2-Bucket-Namen & Endpoint (liegen vor).
+
+Zeitfenster für signierte Links (Standard 1–2 h ausreichend?).
+
+Platzhalter-Texte für Exposé-Highlights ok (deutsch, neutral-seriös)?
