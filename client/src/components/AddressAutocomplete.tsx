@@ -155,7 +155,7 @@ export function AddressAutocomplete({
     setValidationStatus('validating');
 
     try {
-      const response = await apiRequest('/api/google/geocode', 'POST', { address });
+      const response = await apiRequest('POST', '/api/google/geocode', { address });
       const data = await response.json();
 
       if (data.isValid) {
