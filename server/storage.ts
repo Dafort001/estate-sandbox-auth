@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, seoMetadata, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment, type SeoMetadata } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, seoMetadata, personalAccessTokens, uploadSessions, aiJobs, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment, type SeoMetadata, type PersonalAccessToken, type UploadSession, type AiJob } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -182,6 +182,54 @@ export interface IStorage {
     updatedBy: string;
   }): Promise<SeoMetadata>;
   deleteSeoMetadata(pagePath: string): Promise<void>;
+
+  // Personal Access Token operations
+  createPersonalAccessToken(data: {
+    userId: string;
+    token: string;
+    name?: string;
+    scopes: string;
+    expiresAt: number;
+  }): Promise<import("@shared/schema").PersonalAccessToken>;
+  getUserPersonalAccessTokens(userId: string): Promise<import("@shared/schema").PersonalAccessToken[]>;
+  revokePersonalAccessToken(id: string): Promise<void>;
+  deletePersonalAccessToken(id: string): Promise<void>;
+
+  // Upload session operations
+  createUploadSession(data: {
+    id: string;
+    userId: string;
+    shootId: string;
+    filename: string;
+    roomType: string;
+    stackIndex: number;
+    stackCount: number;
+    r2Key: string;
+    uploadId: string;
+    fileSize?: number;
+  }): Promise<import("@shared/schema").UploadSession>;
+  getUploadSession(id: string): Promise<import("@shared/schema").UploadSession | undefined>;
+  updateUploadSessionParts(id: string, parts: string): Promise<void>;
+  completeUploadSession(id: string): Promise<void>;
+  failUploadSession(id: string): Promise<void>;
+  getUserUploadSessions(userId: string): Promise<import("@shared/schema").UploadSession[]>;
+
+  // AI job operations
+  createAIJob(data: {
+    userId: string;
+    shootId: string;
+    tool: string;
+    modelSlug: string;
+    sourceImageKey: string;
+    params?: string;
+    externalJobId?: string;
+  }): Promise<import("@shared/schema").AiJob>;
+  getAIJob(id: string): Promise<import("@shared/schema").AiJob | undefined>;
+  getAIJobByExternalId(externalJobId: string): Promise<import("@shared/schema").AiJob | undefined>;
+  updateAIJobStatus(id: string, status: string, errorMessage?: string): Promise<void>;
+  completeAIJob(id: string, outputImageKey: string, cost: number, credits: number): Promise<void>;
+  getUserAIJobs(userId: string): Promise<import("@shared/schema").AiJob[]>;
+  getShootAIJobs(shootId: string): Promise<import("@shared/schema").AiJob[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1058,6 +1106,214 @@ export class DatabaseStorage implements IStorage {
 
   async deleteSeoMetadata(pagePath: string): Promise<void> {
     await db.delete(seoMetadata).where(eq(seoMetadata.pagePath, pagePath));
+  }
+
+  async createPersonalAccessToken(data: {
+    userId: string;
+    token: string;
+    name?: string;
+    scopes: string;
+    expiresAt: number;
+  }): Promise<PersonalAccessToken> {
+    const [pat] = await db
+      .insert(personalAccessTokens)
+      .values({
+        id: randomUUID(),
+        userId: data.userId,
+        token: data.token,
+        name: data.name || null,
+        scopes: data.scopes,
+        expiresAt: data.expiresAt,
+        createdAt: Date.now(),
+        lastUsedAt: null,
+        lastUsedIp: null,
+        revokedAt: null,
+      })
+      .returning();
+    return pat;
+  }
+
+  async getUserPersonalAccessTokens(userId: string): Promise<PersonalAccessToken[]> {
+    const tokens = await db
+      .select()
+      .from(personalAccessTokens)
+      .where(eq(personalAccessTokens.userId, userId))
+      .orderBy(desc(personalAccessTokens.createdAt));
+    return tokens;
+  }
+
+  async revokePersonalAccessToken(id: string): Promise<void> {
+    await db
+      .update(personalAccessTokens)
+      .set({ revokedAt: Date.now() })
+      .where(eq(personalAccessTokens.id, id));
+  }
+
+  async deletePersonalAccessToken(id: string): Promise<void> {
+    await db
+      .delete(personalAccessTokens)
+      .where(eq(personalAccessTokens.id, id));
+  }
+
+  async createUploadSession(data: {
+    id: string;
+    userId: string;
+    shootId: string;
+    filename: string;
+    roomType: string;
+    stackIndex: number;
+    stackCount: number;
+    r2Key: string;
+    uploadId: string;
+    fileSize?: number;
+  }): Promise<UploadSession> {
+    const [session] = await db
+      .insert(uploadSessions)
+      .values({
+        id: data.id,
+        userId: data.userId,
+        shootId: data.shootId,
+        filename: data.filename,
+        roomType: data.roomType,
+        stackIndex: data.stackIndex,
+        stackCount: data.stackCount,
+        r2Key: data.r2Key,
+        uploadId: data.uploadId,
+        fileSize: data.fileSize || null,
+        parts: null,
+        status: "initiated",
+        completedAt: null,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return session;
+  }
+
+  async getUploadSession(id: string): Promise<UploadSession | undefined> {
+    const [session] = await db
+      .select()
+      .from(uploadSessions)
+      .where(eq(uploadSessions.id, id));
+    return session || undefined;
+  }
+
+  async updateUploadSessionParts(id: string, parts: string): Promise<void> {
+    await db
+      .update(uploadSessions)
+      .set({ parts, status: "uploading" })
+      .where(eq(uploadSessions.id, id));
+  }
+
+  async completeUploadSession(id: string): Promise<void> {
+    await db
+      .update(uploadSessions)
+      .set({ status: "completed", completedAt: Date.now() })
+      .where(eq(uploadSessions.id, id));
+  }
+
+  async failUploadSession(id: string): Promise<void> {
+    await db
+      .update(uploadSessions)
+      .set({ status: "failed" })
+      .where(eq(uploadSessions.id, id));
+  }
+
+  async getUserUploadSessions(userId: string): Promise<UploadSession[]> {
+    const sessions = await db
+      .select()
+      .from(uploadSessions)
+      .where(eq(uploadSessions.userId, userId))
+      .orderBy(desc(uploadSessions.createdAt));
+    return sessions;
+  }
+
+  async createAIJob(data: {
+    userId: string;
+    shootId: string;
+    tool: string;
+    modelSlug: string;
+    sourceImageKey: string;
+    params?: string;
+    externalJobId?: string;
+  }): Promise<AiJob> {
+    const [job] = await db
+      .insert(aiJobs)
+      .values({
+        id: randomUUID(),
+        userId: data.userId,
+        shootId: data.shootId,
+        tool: data.tool,
+        modelSlug: data.modelSlug,
+        sourceImageKey: data.sourceImageKey,
+        outputImageKey: null,
+        params: data.params || null,
+        externalJobId: data.externalJobId || null,
+        status: "pending",
+        cost: null,
+        credits: null,
+        errorMessage: null,
+        webhookReceivedAt: null,
+        completedAt: null,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return job;
+  }
+
+  async getAIJob(id: string): Promise<AiJob | undefined> {
+    const [job] = await db.select().from(aiJobs).where(eq(aiJobs.id, id));
+    return job || undefined;
+  }
+
+  async getAIJobByExternalId(externalJobId: string): Promise<AiJob | undefined> {
+    const [job] = await db
+      .select()
+      .from(aiJobs)
+      .where(eq(aiJobs.externalJobId, externalJobId));
+    return job || undefined;
+  }
+
+  async updateAIJobStatus(id: string, status: string, errorMessage?: string): Promise<void> {
+    await db
+      .update(aiJobs)
+      .set({
+        status,
+        errorMessage: errorMessage || null,
+        webhookReceivedAt: Date.now(),
+      })
+      .where(eq(aiJobs.id, id));
+  }
+
+  async completeAIJob(id: string, outputImageKey: string, cost: number, credits: number): Promise<void> {
+    await db
+      .update(aiJobs)
+      .set({
+        status: "completed",
+        outputImageKey,
+        cost,
+        credits,
+        completedAt: Date.now(),
+        webhookReceivedAt: Date.now(),
+      })
+      .where(eq(aiJobs.id, id));
+  }
+
+  async getUserAIJobs(userId: string): Promise<AiJob[]> {
+    const jobs = await db
+      .select()
+      .from(aiJobs)
+      .where(eq(aiJobs.userId, userId))
+      .orderBy(desc(aiJobs.createdAt));
+    return jobs;
+  }
+
+  async getShootAIJobs(shootId: string): Promise<AiJob[]> {
+    const jobs = await db
+      .select()
+      .from(aiJobs)
+      .where(eq(aiJobs.shootId, shootId))
+      .orderBy(desc(aiJobs.createdAt));
+    return jobs;
   }
 }
 

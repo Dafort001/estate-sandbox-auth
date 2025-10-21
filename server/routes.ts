@@ -4,6 +4,10 @@ import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
 import { logger, generateRequestId, type LogContext } from "./logger";
 import { createJobSchema, initUploadSchema, presignedUploadSchema, assignRoomTypeSchema, type InitUploadResponse, type PresignedUrlResponse } from "@shared/schema";
+import { generateBearerToken } from "./bearer-auth";
+import { validateRawFilename, extractRoomTypeFromFilename, extractStackNumberFromFilename, calculatePartCount, MULTIPART_CHUNK_SIZE } from "./raw-upload-helpers";
+import { initMultipartUpload, generatePresignedUploadUrl, completeMultipartUpload, generateR2ObjectKey } from "./r2-client";
+import { runAITool, getToolById, getAllTools } from "./replicate-adapter";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { upload, processUploadedFiles } from "./uploadHandler";
@@ -525,6 +529,407 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error handling editor upload:", error);
       res.status(500).json({ error: "Failed to process upload" });
+    }
+  });
+
+  // Bearer token management routes
+  const createTokenSchema = z.object({
+    name: z.string().min(1).max(100).optional(),
+    scopes: z.array(z.enum(["upload:raw", "view:gallery", "ai:run", "order:read", "order:write", "admin:all"])),
+    expiresInDays: z.number().int().min(1).max(365).optional().default(90),
+  });
+
+  app.post("/api/tokens", validateBody(createTokenSchema), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { name, scopes, expiresInDays } = req.body;
+      const { token, hashedToken } = generateBearerToken();
+      
+      const expiresAt = Date.now() + (expiresInDays * 24 * 60 * 60 * 1000);
+      
+      const pat = await storage.createPersonalAccessToken({
+        userId: user.id,
+        token: hashedToken,
+        name,
+        scopes: scopes.join(","),
+        expiresAt,
+      });
+
+      res.json({
+        id: pat.id,
+        token,
+        name: pat.name,
+        scopes: pat.scopes.split(","),
+        expiresAt: pat.expiresAt,
+        createdAt: pat.createdAt,
+      });
+    } catch (error) {
+      console.error("Error creating token:", error);
+      res.status(500).json({ error: "Failed to create token" });
+    }
+  });
+
+  app.get("/api/tokens", async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const tokens = await storage.getUserPersonalAccessTokens(user.id);
+      
+      const sanitizedTokens = tokens.map((t) => ({
+        id: t.id,
+        name: t.name,
+        scopes: t.scopes.split(","),
+        expiresAt: t.expiresAt,
+        lastUsedAt: t.lastUsedAt,
+        lastUsedIp: t.lastUsedIp,
+        revokedAt: t.revokedAt,
+        createdAt: t.createdAt,
+      }));
+
+      res.json(sanitizedTokens);
+    } catch (error) {
+      console.error("Error fetching tokens:", error);
+      res.status(500).json({ error: "Failed to fetch tokens" });
+    }
+  });
+
+  app.delete("/api/tokens/:id", validateUuidParam("id"), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      
+      const tokens = await storage.getUserPersonalAccessTokens(user.id);
+      const token = tokens.find((t) => t.id === id);
+
+      if (!token) {
+        return res.status(404).json({ error: "Token not found" });
+      }
+
+      await storage.revokePersonalAccessToken(id);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error revoking token:", error);
+      res.status(500).json({ error: "Failed to revoke token" });
+    }
+  });
+
+  // RAW file upload endpoints (multipart resumable)
+  const initRawUploadSchema = z.object({
+    shootId: z.string().uuid(),
+    filename: z.string().min(1).max(255),
+    fileSize: z.number().int().positive(),
+    roomType: z.string().min(1),
+    stackIndex: z.number().int().min(0),
+    stackCount: z.number().int().min(3).max(5),
+  });
+
+  app.post("/api/raw-uploads/init", validateBody(initRawUploadSchema), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { shootId, filename, fileSize, roomType, stackIndex, stackCount } = req.body;
+
+      const filenameValidation = validateRawFilename(filename);
+      if (!filenameValidation.valid) {
+        return res.status(400).json({ error: filenameValidation.error });
+      }
+
+      const shoot = await storage.getShoot(shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+
+      const r2Key = generateR2ObjectKey(shootId, filename, "raw");
+      
+      const upload = await initMultipartUpload(r2Key, "application/octet-stream");
+
+      const session = await storage.createUploadSession({
+        id: upload.uploadId,
+        userId: user.id,
+        shootId,
+        filename,
+        roomType,
+        stackIndex,
+        stackCount,
+        r2Key,
+        uploadId: upload.uploadId,
+        fileSize,
+      });
+
+      const partCount = calculatePartCount(fileSize);
+
+      res.json({
+        uploadId: upload.uploadId,
+        sessionId: session.id,
+        r2Key: upload.key,
+        partCount,
+        chunkSize: MULTIPART_CHUNK_SIZE,
+      });
+    } catch (error) {
+      console.error("Error initializing upload:", error);
+      res.status(500).json({ error: "Failed to initialize upload" });
+    }
+  });
+
+  const getPresignedUrlsSchema = z.object({
+    partNumbers: z.array(z.number().int().positive()),
+  });
+
+  app.post("/api/raw-uploads/:uploadId/parts", validateBody(getPresignedUrlsSchema), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { uploadId } = req.params;
+      const { partNumbers } = req.body;
+
+      const session = await storage.getUploadSession(uploadId);
+      if (!session) {
+        return res.status(404).json({ error: "Upload session not found" });
+      }
+
+      if (session.userId !== user.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (session.status === "completed") {
+        return res.status(400).json({ error: "Upload already completed" });
+      }
+
+      const presignedUrls = await Promise.all(
+        partNumbers.map(async (partNumber: number) => ({
+          partNumber,
+          url: await generatePresignedUploadUrl(session.r2Key, session.uploadId, partNumber),
+        }))
+      );
+
+      res.json({ presignedUrls });
+    } catch (error) {
+      console.error("Error generating presigned URLs:", error);
+      res.status(500).json({ error: "Failed to generate presigned URLs" });
+    }
+  });
+
+  const completeUploadSchema = z.object({
+    parts: z.array(z.object({
+      PartNumber: z.number().int().positive(),
+      ETag: z.string().min(1),
+    })),
+  });
+
+  app.post("/api/raw-uploads/:uploadId/complete", validateBody(completeUploadSchema), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { uploadId } = req.params;
+      const { parts } = req.body;
+
+      const session = await storage.getUploadSession(uploadId);
+      if (!session) {
+        return res.status(404).json({ error: "Upload session not found" });
+      }
+
+      if (session.userId !== user.id) {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      if (session.status === "completed") {
+        return res.status(400).json({ error: "Upload already completed" });
+      }
+
+      await storage.updateUploadSessionParts(uploadId, JSON.stringify(parts));
+
+      const result = await completeMultipartUpload(session.r2Key, session.uploadId, parts);
+
+      await storage.completeUploadSession(uploadId);
+
+      await storage.createImage({
+        shootId: session.shootId,
+        stackId: undefined,
+        originalFilename: session.filename,
+        renamedFilename: undefined,
+        filePath: session.r2Key,
+        fileSize: session.fileSize || undefined,
+        mimeType: "application/octet-stream",
+        exifDate: undefined,
+        exposureValue: extractStackNumberFromFilename(session.filename) || undefined,
+        positionInStack: session.stackIndex,
+      });
+
+      res.json({
+        success: true,
+        location: result.location,
+        etag: result.etag,
+      });
+    } catch (error) {
+      console.error("Error completing upload:", error);
+      await storage.failUploadSession(req.params.uploadId);
+      res.status(500).json({ error: "Failed to complete upload" });
+    }
+  });
+
+  // AI processing endpoints
+  app.get("/api/ai/tools", async (req: Request, res: Response) => {
+    try {
+      const tools = getAllTools();
+      res.json(tools);
+    } catch (error) {
+      console.error("Error fetching AI tools:", error);
+      res.status(500).json({ error: "Failed to fetch AI tools" });
+    }
+  });
+
+  const runAIToolSchema = z.object({
+    shootId: z.string().uuid(),
+    toolId: z.string().min(1),
+    sourceImageKey: z.string().min(1),
+    params: z.record(z.any()).optional(),
+  });
+
+  app.post("/api/ai/run", validateBody(runAIToolSchema), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { shootId, toolId, sourceImageKey, params } = req.body;
+
+      const shoot = await storage.getShoot(shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+
+      const job = await storage.getJob(shoot.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.userId !== user.id && user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const tool = getToolById(toolId);
+      if (!tool) {
+        return res.status(400).json({ error: "Invalid tool ID" });
+      }
+
+      const webhookUrl = `${process.env.BASE_URL || "https://pix.immo"}/api/ai/webhook`;
+      
+      const sourceImageUrl = `https://${process.env.CF_R2_BUCKET}.r2.cloudflarestorage.com/${sourceImageKey}`;
+
+      const result = await runAITool({
+        toolId,
+        sourceImageUrl,
+        webhookUrl,
+        params,
+      });
+
+      const aiJob = await storage.createAIJob({
+        userId: user.id,
+        shootId,
+        tool: toolId,
+        modelSlug: tool.modelVersion,
+        sourceImageKey,
+        params: params ? JSON.stringify(params) : undefined,
+        externalJobId: result.id,
+      });
+
+      res.json({
+        jobId: aiJob.id,
+        externalJobId: result.id,
+        status: result.status,
+        estimatedTime: tool.estimatedTimeSeconds,
+        cost: tool.costPerImage,
+        credits: tool.creditsPerImage,
+      });
+    } catch (error) {
+      console.error("Error running AI tool:", error);
+      res.status(500).json({ error: "Failed to run AI tool" });
+    }
+  });
+
+  app.post("/api/ai/webhook", async (req: Request, res: Response) => {
+    try {
+      const { id: externalJobId, status, output, error } = req.body;
+
+      const aiJob = await storage.getAIJobByExternalId(externalJobId);
+      if (!aiJob) {
+        return res.status(404).json({ error: "AI job not found" });
+      }
+
+      if (status === "succeeded" && output) {
+        const outputUrl = Array.isArray(output) ? output[0] : output;
+        const outputFilename = `${aiJob.id}_${Date.now()}.jpg`;
+        const outputKey = generateR2ObjectKey(aiJob.shootId, outputFilename, "ai");
+
+        const tool = getToolById(aiJob.tool);
+        const cost = tool?.costPerImage || 0;
+        const credits = tool?.creditsPerImage || 0;
+
+        await storage.completeAIJob(aiJob.id, outputKey, cost, credits);
+
+        res.json({ success: true });
+      } else if (status === "failed") {
+        await storage.updateAIJobStatus(aiJob.id, "failed", error);
+        res.json({ success: true });
+      } else {
+        await storage.updateAIJobStatus(aiJob.id, status);
+        res.json({ success: true });
+      }
+    } catch (error) {
+      console.error("Error processing AI webhook:", error);
+      res.status(500).json({ error: "Failed to process webhook" });
+    }
+  });
+
+  app.get("/api/ai/jobs/:shootId", validateUuidParam("shootId"), async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ error: "Unauthorized" });
+      }
+
+      const { shootId } = req.params;
+
+      const shoot = await storage.getShoot(shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+
+      const job = await storage.getJob(shoot.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+
+      if (job.userId !== user.id && user.role !== "admin") {
+        return res.status(403).json({ error: "Forbidden" });
+      }
+
+      const jobs = await storage.getShootAIJobs(shootId);
+      res.json(jobs);
+    } catch (error) {
+      console.error("Error fetching AI jobs:", error);
+      res.status(500).json({ error: "Failed to fetch AI jobs" });
     }
   });
 
