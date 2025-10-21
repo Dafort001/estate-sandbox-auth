@@ -22,6 +22,7 @@ import { scheduleEditorReturnProcessing, scheduleAICaptioning } from "./backgrou
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
 import { generatePresignedPutUrl, generateObjectPath } from "./objectStorage";
 import { isValidFilenameV31 } from "./fileNaming";
+import { processJobDemo } from "./demo-processing";
 
 // Middleware to validate request body with Zod
 function validateBody(schema: z.ZodSchema) {
@@ -260,12 +261,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Job not found" });
       }
 
-      // TODO: Implement processing logic in Tasks 5-7
-      // 1. Generate 3000px sRGB previews for all images
-      // 2. Run AI captioning (or demo captions)
-      // 3. Generate exposé
-
-      await storage.updateJobStatus(req.params.id, "processing");
+      // Start processing in background (fire-and-forget for demo)
+      processJobDemo(req.params.id, storage).catch((error) => {
+        console.error(`[Demo Processing] Background error for job ${req.params.id}:`, error);
+      });
 
       res.json({ message: "Processing started", jobId: req.params.id });
     } catch (error) {
