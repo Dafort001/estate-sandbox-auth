@@ -1,9 +1,15 @@
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import { SEOHead } from "@/components/SEOHead";
 
 export default function Imprint() {
   return (
     <div className="min-h-screen bg-white">
+      <SEOHead
+        title="Impressum und Datenschutz"
+        description="Rechtliche Informationen und Datenschutzerklärung von PIX.IMMO - Daniel Fortmann, Hamburg."
+        path="/impressum"
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
         <div className="flex items-center justify-between px-[5vw] py-4">

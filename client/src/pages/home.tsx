@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link } from "wouter";
 import { Menu, X } from "lucide-react";
+import { SEOHead, SchemaTemplates } from "@/components/SEOHead";
 
 export default function Home() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -31,6 +32,12 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
+      <SEOHead
+        title="Professionelle Immobilienfotografie Hamburg & Berlin"
+        description="PIX.IMMO - Professionelle Immobilienfotografie, Drohnenaufnahmen, 360°-Touren und Videos für Hamburg und Berlin. KI-gestützte Bildoptimierung und schnelle Lieferung."
+        path="/"
+        schema={SchemaTemplates.localBusiness}
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md flex-shrink-0">
         <div className="flex items-center justify-between px-[5vw] py-4">

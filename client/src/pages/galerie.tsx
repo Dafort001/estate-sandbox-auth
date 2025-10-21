@@ -11,6 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { Home, Download, X, ChevronLeft, ChevronRight, Image as ImageIcon, Heart, MessageCircle, Send, Package } from "lucide-react";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
+import { SEOHead } from "@/components/SEOHead";
 
 type EditedImage = {
   id: string;
@@ -257,6 +258,11 @@ export default function Galerie() {
 
   return (
     <div className="min-h-screen bg-muted/30">
+      <SEOHead
+        title="Galerie"
+        description="Ihre persönliche Bildergalerie. Sehen Sie alle freigegebenen Bilder, markieren Sie Favoriten und geben Sie Feedback."
+        path="/galerie"
+      />
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md">
         <div className="flex items-center justify-between px-[5vw] py-4">
           <Link href="/">

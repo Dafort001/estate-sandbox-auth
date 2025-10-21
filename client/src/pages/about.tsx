@@ -1,9 +1,15 @@
 import { Link } from "wouter";
 import { ArrowLeft, Camera, Plane, Video, Box, Wand2 } from "lucide-react";
+import { SEOHead } from "@/components/SEOHead";
 
 export default function About() {
   return (
     <div className="min-h-screen bg-white">
+      <SEOHead
+        title="Über PIX.IMMO"
+        description="Professionelle Immobilienfotografie für Hamburg und Berlin. Hochwertige Aufnahmen, Drohnenvideos, 360°-Touren und KI-gestützte Bildoptimierung."
+        path="/about"
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
         <div className="flex items-center justify-between px-[5vw] py-4">

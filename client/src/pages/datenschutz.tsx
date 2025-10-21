@@ -1,9 +1,15 @@
 import { Link } from "wouter";
 import { ArrowLeft } from "lucide-react";
+import { SEOHead } from "@/components/SEOHead";
 
 export default function Datenschutz() {
   return (
     <div className="min-h-screen bg-white">
+      <SEOHead
+        title="Datenschutzerklärung"
+        description="Datenschutzerklärung von PIX.IMMO. Informationen zur Datenverarbeitung, KI-Bildoptimierung und Ihren Rechten gemäß DSGVO."
+        path="/datenschutz"
+      />
       {/* Header */}
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-gray-200">
         <div className="flex items-center justify-between px-[5vw] py-4">

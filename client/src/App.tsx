@@ -26,6 +26,7 @@ import Datenschutz from "@/pages/datenschutz";
 import KontaktFormular from "@/pages/kontakt-formular";
 import About from "@/pages/about";
 import FAQ from "@/pages/faq";
+import Downloads from "@/pages/downloads";
 import AdminEditorial from "@/pages/admin-editorial";
 import NotFound from "@/pages/not-found";
 
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/buchen" component={Booking} />
       <Route path="/booking-confirmation" component={BookingConfirmation} />
       <Route path="/galerie" component={Galerie} />
+      <Route path="/downloads" component={Downloads} />
       <Route path="/intake" component={Intake} />
       <Route path="/jobs" component={Jobs} />
       <Route path="/review/:jobId/:shootId" component={Review} />
