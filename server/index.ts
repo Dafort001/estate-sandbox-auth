@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
 import { getConnInfo } from "@hono/node-server/conninfo";
+import { cors } from "hono/cors";
 import { storage } from "./storage";
 import { hashPassword, verifyPassword, SESSION_CONFIG } from "./auth";
 import { signupSchema, loginSchema, passwordResetRequestSchema, passwordResetConfirmSchema, createOrderSchema, createOrderApiSchema, createJobSchema, initUploadSchema, assignRoomTypeSchema, type UserResponse, type CreateOrderApiInput } from "@shared/schema";
@@ -21,6 +22,51 @@ import { tmpdir } from "os";
 import { uploadFile, downloadFile } from "./objectStorage";
 
 const app = new Hono();
+
+// CORS Configuration - Explicit allowlist, no wildcards on protected routes
+const getAllowedOrigins = () => {
+  if (process.env.NODE_ENV === "production") {
+    // Production: Add your production domain(s) here
+    return [
+      "https://pix.immo",
+      "https://www.pix.immo",
+      process.env.PRODUCTION_URL || "",
+    ].filter(Boolean);
+  }
+  // Development: Allow localhost and Replit domains
+  return [
+    "http://localhost:5000",
+    "http://localhost:3000",
+    "http://127.0.0.1:5000",
+    process.env.REPL_SLUG ? `https://${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co` : "",
+  ].filter(Boolean);
+};
+
+// Apply CORS to all API routes
+app.use(
+  "/api/*",
+  cors({
+    origin: (origin) => {
+      const allowedOrigins = getAllowedOrigins();
+      // If no origin header (same-origin request) or origin is in allowlist, allow it
+      if (!origin || allowedOrigins.includes(origin)) {
+        return origin || allowedOrigins[0];
+      }
+      // Reject other origins
+      return allowedOrigins[0];
+    },
+    allowMethods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Authorization"],
+    exposeHeaders: ["Content-Length"],
+    maxAge: 600,
+    credentials: true,
+  })
+);
+
+// Handle OPTIONS preflight requests
+app.options("/api/*", (c) => {
+  return new Response(null, { status: 204 });
+});
 
 // Helper to get client IP (prioritizes trusted, non-spoofable sources)
 function getClientIP(c: any): string {
@@ -1411,15 +1457,34 @@ app.put("/api/stacks/:id/room-type", async (c) => {
   }
 });
 
-// POST /api/uploads/:shootId - Upload photos
+// POST /api/uploads/:shootId - Upload photos (SECURED)
 app.post("/api/uploads/:shootId", async (c) => {
+  let tmpDir: string | null = null;
   try {
+    // SECURITY: Require authentication
+    const authResult = await getAuthUser(c);
+    if (!authResult) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    const { user } = authResult;
+    
     const shootId = c.req.param("shootId");
     
     // Verify shoot exists
     const shoot = await storage.getShoot(shootId);
     if (!shoot) {
       return c.json({ error: "Shoot not found" }, 404);
+    }
+    
+    // Get job to check ownership
+    const job = await storage.getJob(shoot.jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+    
+    // SECURITY: Ownership check (unless admin)
+    if (user.role !== "admin" && job.userId !== user.id) {
+      return c.json({ error: "Forbidden: You do not own this job" }, 403);
     }
     
     // Parse multipart form data
@@ -1430,6 +1495,16 @@ app.post("/api/uploads/:shootId", async (c) => {
       return c.json({ error: "No files uploaded" }, 400);
     }
     
+    // SECURITY: Enforce max files per request (50 files)
+    const MAX_FILES = 50;
+    if (files.length > MAX_FILES) {
+      return c.json({ error: `Too many files. Maximum ${MAX_FILES} files per request` }, 413);
+    }
+    
+    // SECURITY: MIME whitelist
+    const ALLOWED_MIMES = ["image/jpeg", "image/jpg", "image/heic", "image/heif"];
+    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
+    
     // Get frame count from formData (default to 5)
     const frameCountValue = formData.get("frameCount");
     let frameCount: 3 | 5 = 5;
@@ -1439,13 +1514,39 @@ app.post("/api/uploads/:shootId", async (c) => {
     
     // Convert FormData files to format expected by processUploadedFiles
     // Save files to temporary directory first
-    const tmpDir = join(tmpdir(), `upload-${shootId}-${Date.now()}`);
+    tmpDir = join(tmpdir(), `upload-${shootId}-${Date.now()}`);
     await mkdir(tmpDir, { recursive: true });
     
     const multerFiles = [];
     for (const file of files) {
       if (file instanceof File) {
+        // SECURITY: Validate MIME type
+        const mimeType = file.type.toLowerCase();
+        if (!ALLOWED_MIMES.includes(mimeType)) {
+          // Clean up before returning error
+          try {
+            const { rm } = await import("fs/promises");
+            await rm(tmpDir, { recursive: true, force: true });
+          } catch {}
+          return c.json({ 
+            error: `Invalid file type: ${file.type}. Allowed types: ${ALLOWED_MIMES.join(", ")}` 
+          }, 415);
+        }
+        
         const buffer = Buffer.from(await file.arrayBuffer());
+        
+        // SECURITY: Validate file size
+        if (buffer.length > MAX_FILE_SIZE) {
+          // Clean up before returning error
+          try {
+            const { rm } = await import("fs/promises");
+            await rm(tmpDir, { recursive: true, force: true });
+          } catch {}
+          return c.json({ 
+            error: `File too large: ${file.name}. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB` 
+          }, 413);
+        }
+        
         const filename = file.name;
         const filepath = join(tmpDir, filename);
         
@@ -1456,7 +1557,7 @@ app.post("/api/uploads/:shootId", async (c) => {
           fieldname: "photos",
           originalname: filename,
           encoding: "7bit",
-          mimetype: file.type || "application/octet-stream",
+          mimetype: mimeType,
           destination: tmpDir,
           filename: filename,
           path: filepath,
@@ -1464,12 +1565,6 @@ app.post("/api/uploads/:shootId", async (c) => {
           buffer: buffer,
         });
       }
-    }
-    
-    // Get jobId from shoot
-    const job = await storage.getJob(shoot.jobId);
-    if (!job) {
-      return c.json({ error: "Job not found" }, 404);
     }
     
     // Process uploaded files using existing handler
@@ -1487,6 +1582,16 @@ app.post("/api/uploads/:shootId", async (c) => {
   } catch (error) {
     console.error("Error uploading files:", error);
     return c.json({ error: "Failed to upload files" }, 500);
+  } finally {
+    // SECURITY: Always clean up temp files
+    if (tmpDir) {
+      try {
+        const { rm } = await import("fs/promises");
+        await rm(tmpDir, { recursive: true, force: true });
+      } catch (cleanupError) {
+        console.error("Failed to cleanup temp directory:", tmpDir, cleanupError);
+      }
+    }
   }
 });
 

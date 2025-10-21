@@ -95,11 +95,3 @@ export function parseRoomTypeFromFilename(filename: string): string | null {
   return match ? match[1] : null;
 }
 
-/**
- * Parse sequence index from filename (for validation/recovery)
- */
-export function parseSequenceIndexFromFilename(filename: string): number | null {
-  // Match pattern: ..._{room_type}_{index}_...
-  const match = filename.match(/_(\d{3})_g\d+_/);
-  return match ? parseInt(match[1], 10) : null;
-}
