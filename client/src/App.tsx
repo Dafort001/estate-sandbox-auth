@@ -31,6 +31,9 @@ import AdminEditorial from "@/pages/admin-editorial";
 import AdminSeo from "@/pages/admin-seo";
 import UploadRaw from "@/pages/upload-raw";
 import AILab from "@/pages/ai-lab";
+import DemoUpload from "@/pages/demo-upload";
+import DemoJobs from "@/pages/demo-jobs";
+import DemoJobDetail from "@/pages/demo-job-detail";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -64,6 +67,9 @@ function Router() {
       <Route path="/admin/seo" component={AdminSeo} />
       <Route path="/upload-raw" component={UploadRaw} />
       <Route path="/ai-lab" component={AILab} />
+      <Route path="/demo-upload" component={DemoUpload} />
+      <Route path="/demo-jobs" component={DemoJobs} />
+      <Route path="/job/:id" component={DemoJobDetail} />
       <Route component={NotFound} />
     </Switch>
   );
