@@ -42,7 +42,7 @@ export default function DemoUpload() {
   const createJobMutation = useMutation({
     mutationFn: async (data: JobFormValues) => {
       const response = await apiRequest("POST", "/api/jobs", data);
-      return response;
+      return response.json();
     },
     onSuccess: (job: any) => {
       queryClient.invalidateQueries({ queryKey: ["/api/jobs"] });
