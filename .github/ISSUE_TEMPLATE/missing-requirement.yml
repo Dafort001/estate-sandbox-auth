@@ -1,0 +1,89 @@
+name: Missing Requirement
+description: Report a missing item from the AUDIT_CHECKLIST.md
+title: "[MISSING]: "
+labels: ["audit", "missing-requirement"]
+assignees: []
+
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## Missing Requirement Report
+        Use this template to report missing items from the project audit checklist.
+
+  - type: dropdown
+    id: category
+    attributes:
+      label: Category
+      description: Which section of the checklist is this requirement from?
+      options:
+        - Core Infrastructure
+        - Authentication & Security
+        - File Management
+        - API Endpoints
+        - Frontend Pages
+        - Database Schema
+        - Documentation
+        - Deployment & CI/CD
+        - Third-party Integrations
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: requirement
+    attributes:
+      label: Missing Requirement
+      description: What specific requirement is missing?
+      placeholder: "e.g., Password reset email flow with Mailgun"
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-state
+    attributes:
+      label: Current State
+      description: Describe the current implementation (if any)
+      placeholder: "Currently, password reset tokens are generated but no emails are sent..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-state
+    attributes:
+      label: Expected State
+      description: What should be implemented to meet the requirement?
+      placeholder: "Should integrate Mailgun API to send password reset emails with secure tokens..."
+    validations:
+      required: true
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: Priority
+      description: How critical is this requirement?
+      options:
+        - Critical (blocks deployment)
+        - High (needed for MVP)
+        - Medium (nice to have)
+        - Low (future enhancement)
+    validations:
+      required: true
+
+  - type: textarea
+    id: implementation-notes
+    attributes:
+      label: Implementation Notes
+      description: Any additional context, blockers, or implementation suggestions?
+      placeholder: "Requires MAILGUN_API_KEY environment variable. Reference implementation in auth.ts..."
+
+  - type: checkboxes
+    id: checklist-reference
+    attributes:
+      label: Checklist Reference
+      description: Confirm this requirement is documented
+      options:
+        - label: This requirement is listed in AUDIT_CHECKLIST.md
+          required: true
+        - label: I have checked that this isn't already implemented
+          required: true

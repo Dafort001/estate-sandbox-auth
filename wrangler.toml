@@ -1,29 +1,34 @@
-name = "pix-immo"
+name = "piximmo-app"
 main = "server/index.ts"
-compatibility_date = "2024-01-01"
+compatibility_date = "2025-10-01"
 node_compat = true
+
+[vars]
+NODE_ENV = "production"
 
 # Development environment
 [env.development]
-name = "pix-immo-dev"
+name = "piximmo-app-dev"
 vars = { APP_ENV = "development", NODE_ENV = "development" }
 
 # Production environment
 [env.production]
-name = "pix-immo"
+name = "piximmo-app"
 vars = { APP_ENV = "production", NODE_ENV = "production" }
 
 # R2 Bucket bindings (for object storage)
-# [[r2_buckets]]
-# binding = "IMAGES_BUCKET"
-# bucket_name = "pix-immo-images"
-# preview_bucket_name = "pix-immo-images-dev"
+[[r2_buckets]]
+binding = "R2_BUCKET"
+bucket_name = "piximmo"
+preview_bucket_name = "piximmo-dev"
 
-# KV Namespace bindings (for session storage if needed)
-# [[kv_namespaces]]
-# binding = "SESSIONS"
-# id = "YOUR_KV_NAMESPACE_ID"
-# preview_id = "YOUR_DEV_KV_NAMESPACE_ID"
+# Observability configuration
+[observability]
+enabled = true
+
+# Build configuration
+[build]
+command = "npm run build"
 
 # Environment secrets (set via: wrangler secret put SECRET_NAME)
 # Required secrets:
@@ -33,13 +38,7 @@ vars = { APP_ENV = "production", NODE_ENV = "production" }
 # - MAILGUN_API_KEY (optional, for email notifications)
 # - REPLICATE_API_KEY (optional, for AI captioning)
 # - MODAL_API_KEY (optional, for image analysis)
-
-# Build configuration
-[build]
-command = "npm run build"
-
-# Compatibility flags
-[compatibility_flags]
+# - TIDYCAL_WEBHOOK_URL (optional, for scheduling integration)
 
 # Routes (configure your custom domain here)
 # [[env.production.routes]]
