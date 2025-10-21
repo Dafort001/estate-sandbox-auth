@@ -95,3 +95,73 @@ export function parseRoomTypeFromFilename(filename: string): string | null {
   return match ? match[1] : null;
 }
 
+/**
+ * Parse sequence index from filename (for validation/recovery)
+ */
+export function parseSequenceIndexFromFilename(filename: string): number | null {
+  // Match pattern: ..._{room_type}_{index}_...
+  const match = filename.match(/_(\d{3})_g\d+_/);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+/**
+ * Filename naming schema v3.1 validator
+ * Schema: {date}-{shootcode}_{room_type}_{index}_v{ver}.{ext}
+ * Example: 20231215-ABC123_living_001_v1.jpg
+ */
+
+export interface ParsedFilename {
+  date: string;          // YYYYMMDD format
+  shootCode: string;     // Shoot code
+  roomType: string;      // Room type (e.g., living, kitchen, bedroom)
+  index: string;         // Image index (e.g., 001, 002)
+  version: string;       // Version number (e.g., 1, 2)
+  extension: string;     // File extension (jpg, heic, etc.)
+}
+
+// Regex pattern for v3.1 naming schema (final files only)
+// Format: {date}-{shootcode}_{room_type}_{index}_v{ver}.{ext}
+const FILENAME_V31_PATTERN = /^(\d{8})-([A-Za-z0-9]+)_([a-z_]+)_(\d{3})_v(\d+)\.(jpg|jpeg|heic|heif|png)$/i;
+
+/**
+ * Validates a filename against the v3.1 naming schema (final files)
+ * @param filename - The filename to validate
+ * @returns ParsedFilename if valid, null if invalid
+ */
+export function validateFilenameV31(filename: string): ParsedFilename | null {
+  const match = filename.match(FILENAME_V31_PATTERN);
+  
+  if (!match) {
+    return null;
+  }
+  
+  const [, date, shootCode, roomType, index, version, extension] = match;
+  
+  // Validate date format (YYYYMMDD)
+  const year = parseInt(date.substring(0, 4), 10);
+  const month = parseInt(date.substring(4, 6), 10);
+  const day = parseInt(date.substring(6, 8), 10);
+  
+  if (year < 2020 || year > 2100 || month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  
+  return {
+    date,
+    shootCode,
+    roomType,
+    index,
+    version,
+    extension: extension.toLowerCase(),
+  };
+}
+
+/**
+ * Checks if a filename is valid according to v3.1 schema (final files)
+ * @param filename - The filename to check
+ * @returns true if valid, false otherwise
+ */
+export function isValidFilenameV31(filename: string): boolean {
+  return validateFilenameV31(filename) !== null;
+}
+

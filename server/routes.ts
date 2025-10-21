@@ -1,13 +1,16 @@
 import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
+import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
-import { createJobSchema, initUploadSchema, assignRoomTypeSchema, type InitUploadResponse } from "@shared/schema";
+import { createJobSchema, initUploadSchema, presignedUploadSchema, assignRoomTypeSchema, type InitUploadResponse, type PresignedUrlResponse } from "@shared/schema";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { upload, processUploadedFiles } from "./uploadHandler";
 import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
 import { scheduleEditorReturnProcessing, scheduleAICaptioning } from "./backgroundQueue";
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
+import { generatePresignedPutUrl, generateObjectPath } from "./objectStorage";
+import { isValidFilenameV31 } from "./fileNaming";
 
 // Middleware to validate request body with Zod
 function validateBody(schema: z.ZodSchema) {
@@ -25,7 +28,99 @@ function validateBody(schema: z.ZodSchema) {
   };
 }
 
+// Middleware to validate UUID path parameters
+function validateUuidParam(...paramNames: string[]) {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  
+  return (req: Request, res: Response, next: any) => {
+    for (const paramName of paramNames) {
+      const value = req.params[paramName];
+      if (value && !uuidRegex.test(value)) {
+        return res.status(400).json({ error: `Invalid ${paramName} format` });
+      }
+    }
+    next();
+  };
+}
+
+// Middleware to validate and sanitize string path parameters
+function validateStringParam(...paramNames: string[]) {
+  // Allow alphanumeric, hyphens, and underscores only
+  const safeStringRegex = /^[a-zA-Z0-9_-]+$/;
+  
+  return (req: Request, res: Response, next: any) => {
+    for (const paramName of paramNames) {
+      const value = req.params[paramName];
+      if (value && !safeStringRegex.test(value)) {
+        return res.status(400).json({ error: `Invalid ${paramName} format` });
+      }
+    }
+    next();
+  };
+}
+
+// Rate limiters for sensitive endpoints
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30, // 30 uploads per minute per IP
+  message: { error: "Too many upload requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const presignLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 20, // 20 presign requests per minute per IP
+  message: { error: "Too many presign requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+const handoffLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 10, // 10 handoff generation requests per minute per IP
+  message: { error: "Too many handoff requests, please try again later" },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Security headers middleware
+  app.use((req, res, next) => {
+    // Prevent clickjacking
+    res.setHeader("X-Frame-Options", "DENY");
+    
+    // Prevent MIME-type sniffing
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    
+    // Enable XSS filter in older browsers
+    res.setHeader("X-XSS-Protection", "1; mode=block");
+    
+    // Referrer policy
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    
+    // Content Security Policy - relaxed for development only
+    // In development, Vite HMR requires 'unsafe-inline' and 'unsafe-eval'
+    // This middleware only runs in development, so these directives are acceptable
+    res.setHeader(
+      "Content-Security-Policy",
+      "default-src 'self'; " +
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: https: blob:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' https://storage.googleapis.com; " +
+      "frame-ancestors 'none';"
+    );
+    
+    // HSTS (only in production with HTTPS)
+    if (process.env.NODE_ENV === "production") {
+      res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+    }
+    
+    next();
+  });
+  
   // Ensure demo user exists for development
   async function ensureDemoUser() {
     const demoEmail = "demo@pix.immo";
@@ -74,7 +169,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/jobs/:id - Get job by ID
-  app.get("/api/jobs/:id", async (req: Request, res: Response) => {
+  app.get("/api/jobs/:id", validateUuidParam("id"), async (req: Request, res: Response) => {
     try {
       const job = await storage.getJob(req.params.id);
       if (!job) {
@@ -121,7 +216,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/shoots/:id - Get shoot details
-  app.get("/api/shoots/:id", async (req: Request, res: Response) => {
+  app.get("/api/shoots/:id", validateUuidParam("id"), async (req: Request, res: Response) => {
     try {
       const shoot = await storage.getShoot(req.params.id);
       if (!shoot) {
@@ -135,7 +230,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/shoots/:id/stacks - Get all stacks for a shoot
-  app.get("/api/shoots/:id/stacks", async (req: Request, res: Response) => {
+  app.get("/api/shoots/:id/stacks", validateUuidParam("id"), async (req: Request, res: Response) => {
     try {
       const stacks = await storage.getShootStacks(req.params.id);
       res.json(stacks);
@@ -146,7 +241,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // PUT /api/stacks/:id/room-type - Assign room type to a stack
-  app.put("/api/stacks/:id/room-type", validateBody(assignRoomTypeSchema), async (req: Request, res: Response) => {
+  app.put("/api/stacks/:id/room-type", validateUuidParam("id"), validateBody(assignRoomTypeSchema), async (req: Request, res: Response) => {
     try {
       const { roomType } = req.body;
       await storage.updateStackRoomType(req.params.id, roomType);
@@ -160,7 +255,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // GET /api/shoots/:id/images - Get all images for a shoot
-  app.get("/api/shoots/:id/images", async (req: Request, res: Response) => {
+  app.get("/api/shoots/:id/images", validateUuidParam("id"), async (req: Request, res: Response) => {
     try {
       const images = await storage.getShootImages(req.params.id);
       res.json(images);
@@ -171,7 +266,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   // POST /api/projects/:jobId/handoff/:shootId - Generate handoff package
-  app.post("/api/projects/:jobId/handoff/:shootId", async (req: Request, res: Response) => {
+  app.post("/api/projects/:jobId/handoff/:shootId", handoffLimiter, validateUuidParam("jobId", "shootId"), async (req: Request, res: Response) => {
     try {
       const { jobId, shootId } = req.params;
       
@@ -224,8 +319,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // POST /api/shoots/:id/presign - Generate presigned URLs for uploading RAW images
+  app.post("/api/shoots/:id/presign", presignLimiter, validateUuidParam("id"), validateBody(presignedUploadSchema), async (req: Request, res: Response) => {
+    try {
+      const shootId = req.params.id;
+      const { filenames } = req.body as { filenames: string[] };
+      
+      // TODO: Get userId from session/auth middleware when auth is implemented
+      // For now, use demo user for ownership check
+      const demoUser = await ensureDemoUser();
+      
+      // Get shoot to verify it exists and check ownership
+      const shoot = await storage.getShoot(shootId);
+      if (!shoot) {
+        return res.status(404).json({ error: "Shoot not found" });
+      }
+      
+      // Get job to verify ownership
+      const job = await storage.getJob(shoot.jobId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // TODO: Check if user owns the job when auth is implemented
+      // if (job.userId !== demoUser.id) {
+      //   return res.status(403).json({ error: "Unauthorized" });
+      // }
+      
+      // Validate file limits
+      if (filenames.length > 50) {
+        return res.status(400).json({ error: "Maximum 50 files per request" });
+      }
+      
+      // Process each filename
+      const results: PresignedUrlResponse[] = [];
+      
+      for (const filename of filenames) {
+        // Validate filename against v3.1 schema
+        if (!isValidFilenameV31(filename)) {
+          results.push({
+            filename,
+            uploadUrl: "",
+            error: "Invalid filename format. Must match v3.1 schema: {date}-{shootcode}_{room_type}_{index}_v{ver}.{ext}",
+          });
+          continue;
+        }
+        
+        // Validate MIME type based on extension
+        const ext = filename.split('.').pop()?.toLowerCase();
+        const allowedExtensions = ['jpg', 'jpeg', 'heic', 'heif', 'png'];
+        if (!ext || !allowedExtensions.includes(ext)) {
+          results.push({
+            filename,
+            uploadUrl: "",
+            error: `Invalid file extension. Allowed: ${allowedExtensions.join(', ')}`,
+          });
+          continue;
+        }
+        
+        // Generate object path
+        const objectPath = generateObjectPath(job.id, shootId, filename, 'raw');
+        
+        // Generate presigned URL (120 second TTL)
+        const presignResult = await generatePresignedPutUrl(objectPath, 120);
+        
+        if (!presignResult.ok || !presignResult.url) {
+          results.push({
+            filename,
+            uploadUrl: "",
+            error: presignResult.error || "Failed to generate presigned URL",
+          });
+          continue;
+        }
+        
+        results.push({
+          filename,
+          uploadUrl: presignResult.url,
+        });
+      }
+      
+      res.json({ results });
+    } catch (error) {
+      console.error("Error generating presigned URLs:", error);
+      res.status(500).json({ error: "Failed to generate presigned URLs" });
+    }
+  });
+  
   // POST /api/shoots/:id/upload - Upload RAW images for a shoot
-  app.post("/api/shoots/:id/upload", upload.array("files"), async (req: Request, res: Response) => {
+  app.post("/api/shoots/:id/upload", uploadLimiter, validateUuidParam("id"), upload.array("files"), async (req: Request, res: Response) => {
     try {
       const shootId = req.params.id;
       const files = req.files as Express.Multer.File[];

@@ -127,6 +127,48 @@ const tokenRefreshLimiter = rateLimiter({
   keyGenerator: (c) => getClientIP(c),
 });
 
+// Security headers middleware
+app.use("*", async (c, next) => {
+  await next();
+  
+  // Prevent clickjacking
+  c.res.headers.set("X-Frame-Options", "DENY");
+  
+  // Prevent MIME-type sniffing
+  c.res.headers.set("X-Content-Type-Options", "nosniff");
+  
+  // Enable XSS filter in older browsers
+  c.res.headers.set("X-XSS-Protection", "1; mode=block");
+  
+  // Referrer policy
+  c.res.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  
+  // Content Security Policy - stricter in production
+  const isProduction = process.env.NODE_ENV === "production";
+  const scriptSrc = isProduction 
+    ? "'self'" 
+    : "'self' 'unsafe-inline' 'unsafe-eval'"; // Dev needs these for Vite HMR
+  const styleSrc = isProduction
+    ? "'self'"
+    : "'self' 'unsafe-inline'"; // Dev needs inline styles for Vite/React
+  
+  c.res.headers.set(
+    "Content-Security-Policy",
+    `default-src 'self'; ` +
+    `script-src ${scriptSrc}; ` +
+    `style-src ${styleSrc}; ` +
+    `img-src 'self' data: https: blob:; ` +
+    `font-src 'self' data:; ` +
+    `connect-src 'self' https://storage.googleapis.com; ` +
+    `frame-ancestors 'none';`
+  );
+  
+  // HSTS (only in production with HTTPS)
+  if (process.env.NODE_ENV === "production") {
+    c.res.headers.set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  }
+});
+
 // Serve static files from public directory
 app.use("/public/*", serveStatic({ root: "./" }));
 app.use("/favicon.ico", serveStatic({ path: "./public/favicon.ico" }));

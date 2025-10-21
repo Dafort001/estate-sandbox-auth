@@ -404,6 +404,10 @@ export const initUploadSchema = z.object({
   jobNumber: z.string().min(1, "Job number is required"),
 });
 
+export const presignedUploadSchema = z.object({
+  filenames: z.array(z.string().min(1)).min(1).max(50, "Maximum 50 files per request"),
+});
+
 export const roomTypeSchema = z.enum([
   "living_room",
   "kitchen",
@@ -428,9 +432,16 @@ export const createStackSchema = z.object({
 
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type InitUploadInput = z.infer<typeof initUploadSchema>;
+export type PresignedUploadInput = z.infer<typeof presignedUploadSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
 export type AssignRoomTypeInput = z.infer<typeof assignRoomTypeSchema>;
 export type CreateStackInput = z.infer<typeof createStackSchema>;
+
+export interface PresignedUrlResponse {
+  filename: string;
+  uploadUrl: string;
+  error?: string;
+}
 
 // Booking/Order Validation Schemas
 export const createOrderApiSchema = z.object({
