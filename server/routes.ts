@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { createServer, type Server } from "http";
 import rateLimit from "express-rate-limit";
 import { storage } from "./storage";
+import { logger, generateRequestId, type LogContext } from "./logger";
 import { createJobSchema, initUploadSchema, presignedUploadSchema, assignRoomTypeSchema, type InitUploadResponse, type PresignedUrlResponse } from "@shared/schema";
 import { z } from "zod";
 import { randomBytes } from "crypto";
@@ -85,6 +86,32 @@ const handoffLimiter = rateLimit({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Request ID middleware - Attach unique request_id to every request
+  app.use((req: Request, res: Response, next: any) => {
+    const requestId = generateRequestId();
+    (req as any).requestId = requestId;
+    const requestStart = Date.now();
+    
+    // Attach request ID to response header for tracing
+    res.setHeader("X-Request-ID", requestId);
+    
+    // Log request completion
+    res.on("finish", () => {
+      const duration = Date.now() - requestStart;
+      const logContext: LogContext = {
+        requestId,
+        method: req.method,
+        path: req.path,
+        status: res.statusCode,
+        duration: `${duration}ms`,
+      };
+      
+      logger.info(`Request completed`, logContext);
+    });
+    
+    next();
+  });
+
   // Security headers middleware
   app.use((req, res, next) => {
     // Prevent clickjacking

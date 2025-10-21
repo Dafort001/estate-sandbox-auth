@@ -19,8 +19,31 @@ import { generateFinalHandoff } from "./finalHandoff";
 // Removed: writeFile, mkdir, join, tmpdir - no longer needed after removing multipart upload
 import { uploadFile, downloadFile } from "./objectStorage";
 import { scheduleCleanup } from "./cleanup";
+import { logger, generateRequestId, type LogContext } from "./logger";
 
 const app = new Hono();
+
+// Request ID middleware - Attach unique request_id to every request
+app.use("*", async (c, next) => {
+  const requestId = generateRequestId();
+  const requestStart = Date.now();
+  
+  // Attach request ID to response header for tracing
+  c.header("X-Request-ID", requestId);
+  
+  await next();
+  
+  const duration = Date.now() - requestStart;
+  const logContext: LogContext = {
+    requestId,
+    method: c.req.method,
+    path: c.req.path,
+    status: c.res.status,
+    duration: `${duration}ms`,
+  };
+  
+  logger.info(`Request completed`, logContext);
+});
 
 // CORS Configuration - Explicit allowlist, no wildcards on protected routes
 const getAllowedOrigins = () => {
