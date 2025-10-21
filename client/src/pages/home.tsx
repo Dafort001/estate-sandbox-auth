@@ -198,14 +198,14 @@ export default function Home() {
       {/* Hamburger Menu Drawer */}
       {isMenuOpen && (
         <aside
-          className="fixed inset-0 z-50 bg-black/30 backdrop-blur-sm"
+          className="fixed inset-0 z-50"
           aria-hidden={!isMenuOpen}
           onClick={(e) => {
             if (e.target === e.currentTarget) setIsMenuOpen(false);
           }}
           data-testid="menu-drawer"
         >
-          <div className="absolute top-16 right-[5vw] bg-white/95 backdrop-blur-md shadow-lg rounded-lg p-6 min-w-[200px]">
+          <div className="absolute top-16 right-[5vw] bg-white shadow-lg rounded-lg p-6 min-w-[200px]">
             <div className="flex items-center justify-end mb-6">
               <button
                 onClick={() => setIsMenuOpen(false)}
