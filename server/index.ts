@@ -439,6 +439,23 @@ app.get("/api/me", async (c) => {
   }
 });
 
+// GET /api/credits/balance - Get user credit balance
+app.get("/api/credits/balance", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Unauthorized" }, 401);
+    }
+    
+    const credits = await storage.getUserCredits(authUser.user.id);
+    return c.json({ credits });
+  } catch (error) {
+    console.error("Error fetching credits:", error);
+    return c.json({ error: "Failed to fetch credits" }, 500);
+  }
+});
+
 // Deprecated: Database-based services endpoint removed
 // Services now loaded from JSON file via GET /api/services below
 

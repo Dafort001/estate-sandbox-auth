@@ -978,94 +978,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Credit billing endpoints - using Stripe integration from blueprint:javascript_stripe
-  app.get("/api/credits/balance", async (req: Request, res: Response) => {
-    try {
-      const user = (req as any).user;
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const credits = await storage.getUserCredits(user.id);
-      res.json({ credits });
-    } catch (error) {
-      console.error("Error fetching credits:", error);
-      res.status(500).json({ error: "Failed to fetch credits" });
-    }
-  });
-
-  const createPaymentSchema = z.object({
-    credits: z.number().int().min(100).max(10000),
-  });
-
-  app.post("/api/credits/purchase", validateBody(createPaymentSchema), async (req: Request, res: Response) => {
-    try {
-      if (!stripe) {
-        return res.status(503).json({ error: "Payment system not configured" });
-      }
-
-      const user = (req as any).user;
-      if (!user) {
-        return res.status(401).json({ error: "Unauthorized" });
-      }
-
-      const { credits } = req.body;
-      const pricePerCredit = 0.01;
-      const amount = Math.round(credits * pricePerCredit * 100);
-
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount,
-        currency: "eur",
-        metadata: {
-          userId: user.id,
-          credits: credits.toString(),
-        },
-      });
-
-      res.json({ 
-        clientSecret: paymentIntent.client_secret,
-        amount,
-        credits,
-      });
-    } catch (error) {
-      console.error("Error creating payment intent:", error);
-      res.status(500).json({ error: "Failed to create payment intent" });
-    }
-  });
-
-  app.post("/api/credits/webhook", async (req: Request, res: Response) => {
-    try {
-      if (!stripe) {
-        return res.status(503).json({ error: "Payment system not configured" });
-      }
-
-      const sig = req.headers["stripe-signature"];
-      if (!sig) {
-        return res.status(400).json({ error: "Missing signature" });
-      }
-
-      const event = stripe.webhooks.constructEvent(
-        req.body,
-        sig,
-        process.env.STRIPE_WEBHOOK_SECRET || ""
-      );
-
-      if (event.type === "payment_intent.succeeded") {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
-        const { userId, credits } = paymentIntent.metadata;
-
-        if (userId && credits) {
-          await storage.addCredits(userId, parseInt(credits, 10));
-          console.log(`Added ${credits} credits to user ${userId}`);
-        }
-      }
-
-      res.json({ received: true });
-    } catch (error) {
-      console.error("Error processing Stripe webhook:", error);
-      res.status(400).json({ error: "Webhook error" });
-    }
-  });
+  // NOTE: Credit billing endpoints moved to server/index.ts (Hono) for proper session auth
+  // - GET /api/credits/balance
+  // - POST /api/credits/purchase
+  // - POST /api/credits/webhook
 
   // Healthz endpoint for monitoring and CI/CD
   app.get("/healthz", (req, res) => {
