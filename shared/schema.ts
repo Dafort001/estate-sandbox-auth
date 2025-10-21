@@ -536,12 +536,38 @@ export const passwordResetConfirmSchema = z.object({
   newPassword: z.string().min(8, "Password must be at least 8 characters"),
 });
 
+// Validation Helpers
+// Postal code check
+const germanPostalCodeRegex = /\b\d{5}\b/;
+
+// Phone validation: extract digits and check if valid German number
+function isValidGermanPhone(phone: string): boolean {
+  if (!phone) return false;
+  // Extract only digits
+  const digits = phone.replace(/\D/g, '');
+  // Check if starts with German prefix and has enough digits
+  if (digits.startsWith('49')) {
+    return digits.length >= 11 && digits.length <= 15; // +49 + 9-13 digits
+  }
+  if (digits.startsWith('0')) {
+    return digits.length >= 10 && digits.length <= 14; // 0 + 9-13 digits
+  }
+  return false;
+}
+
 export const createOrderSchema = z.object({
-  propertyName: z.string().min(1, "Property name is required"),
-  contactName: z.string().min(1, "Contact name is required"),
-  contactEmail: z.string().email("Invalid email address"),
-  contactPhone: z.string().optional(),
-  propertyAddress: z.string().min(1, "Property address is required"),
+  propertyName: z.string().min(1, "Objektname erforderlich"),
+  contactName: z.string().min(2, "Kontaktname muss mindestens 2 Zeichen lang sein"),
+  contactEmail: z.string().email("Ungültige E-Mail-Adresse"),
+  contactPhone: z.string()
+    .min(1, "Telefonnummer erforderlich")
+    .refine(isValidGermanPhone, "Ungültige Telefonnummer (z.B. +49 170 1234567 oder 0170 1234567)"),
+  propertyAddress: z.string()
+    .min(10, "Adresse muss mindestens 10 Zeichen lang sein")
+    .refine(
+      (addr) => germanPostalCodeRegex.test(addr),
+      { message: "Adresse muss eine gültige deutsche Postleitzahl (5 Ziffern) enthalten" }
+    ),
   preferredDate: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -613,10 +639,21 @@ export const createOrderApiSchema = z.object({
   contact: z.object({
     name: z.string().optional(),
     email: z.string().email().optional().or(z.literal("")),
-    mobile: z.string().min(1, "Mobile number is required"), // Required
+    mobile: z.string()
+      .min(1, "Mobile number is required")
+      .refine(isValidGermanPhone, "Invalid mobile number (e.g. +49 170 1234567 or 0170 1234567)"),
   }),
   propertyName: z.string().min(1, "Property name is required"),
-  propertyAddress: z.string().optional(), // Optional (for cases without Google listing)
+  propertyAddress: z.string()
+    .optional()
+    .refine(
+      (addr) => !addr || addr.length === 0 || addr.length >= 10,
+      { message: "Address must be at least 10 characters" }
+    )
+    .refine(
+      (addr) => !addr || addr.length === 0 || germanPostalCodeRegex.test(addr),
+      { message: "Address must contain a valid German postal code (5 digits)" }
+    ),
   propertyType: z.string().optional(),
   preferredDate: z.string().optional(),
   preferredTime: z.string().optional(),

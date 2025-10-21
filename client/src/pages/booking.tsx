@@ -40,14 +40,41 @@ interface ServiceCatalog {
   };
 }
 
+// Validation patterns
+const germanPostalCodeRegex = /\b\d{5}\b/;
+
+// Phone validation: extract digits and check if valid German number
+function isValidGermanPhone(phone: string): boolean {
+  if (!phone) return false;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('49')) {
+    return digits.length >= 11 && digits.length <= 15;
+  }
+  if (digits.startsWith('0')) {
+    return digits.length >= 10 && digits.length <= 14;
+  }
+  return false;
+}
+
 const bookingSchema = z.object({
   region: z.enum(["HH", "B", "EXT"], { required_error: "Region erforderlich" }),
   kilometers: z.number().int().min(0).optional(),
   contactName: z.string().optional(),
   contactEmail: z.string().email("Ungültige E-Mail").optional().or(z.literal("")),
-  contactMobile: z.string().min(1, "Mobilnummer erforderlich"),
+  contactMobile: z.string()
+    .min(1, "Mobilnummer erforderlich")
+    .refine(isValidGermanPhone, "Ungültige Mobilnummer (z.B. +49 170 1234567 oder 0170 1234567)"),
   propertyName: z.string().min(1, "Objektbezeichnung erforderlich"),
-  propertyAddress: z.string().optional(),
+  propertyAddress: z.string()
+    .optional()
+    .refine(
+      (addr) => !addr || addr.length === 0 || addr.length >= 10,
+      { message: "Adresse muss mindestens 10 Zeichen lang sein" }
+    )
+    .refine(
+      (addr) => !addr || addr.length === 0 || germanPostalCodeRegex.test(addr),
+      { message: "Adresse muss eine gültige Postleitzahl (5 Ziffern) enthalten" }
+    ),
   propertyType: z.string().optional(),
   preferredDate: z.string().optional(),
   preferredTime: z.string().optional(),
@@ -65,6 +92,12 @@ const bookingSchema = z.object({
 }, {
   message: "Kilometer erforderlich für erweiterte Anfahrt (EXT)",
   path: ["kilometers"],
+}).refine((data) => {
+  // At least one service must be selected with quantity > 0
+  return Object.values(data.serviceSelections).some(qty => qty > 0);
+}, {
+  message: "Mindestens ein Service muss ausgewählt werden",
+  path: ["serviceSelections"],
 });
 
 type BookingFormData = z.infer<typeof bookingSchema>;

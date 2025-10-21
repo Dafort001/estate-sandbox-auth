@@ -13,12 +13,35 @@ import { useToast } from "@/hooks/use-toast";
 import { Camera, ArrowLeft } from "lucide-react";
 import { apiRequest, getQueryFn, queryClient } from "@/lib/queryClient";
 
+// Validation patterns
+const germanPostalCodeRegex = /\b\d{5}\b/;
+
+// Phone validation: extract digits and check if valid German number
+function isValidGermanPhone(phone: string): boolean {
+  if (!phone) return false;
+  const digits = phone.replace(/\D/g, '');
+  if (digits.startsWith('49')) {
+    return digits.length >= 11 && digits.length <= 15;
+  }
+  if (digits.startsWith('0')) {
+    return digits.length >= 10 && digits.length <= 14;
+  }
+  return false;
+}
+
 const orderSchema = z.object({
   propertyName: z.string().min(1, "Name der Immobilie erforderlich"),
-  contactName: z.string().min(1, "Kontaktname erforderlich"),
+  contactName: z.string().min(2, "Kontaktname muss mindestens 2 Zeichen lang sein"),
   contactEmail: z.string().email("Ungültige E-Mail-Adresse"),
-  contactPhone: z.string().min(1, "Telefonnummer erforderlich"),
-  propertyAddress: z.string().min(1, "Adresse der Immobilie erforderlich"),
+  contactPhone: z.string()
+    .min(1, "Telefonnummer erforderlich")
+    .refine(isValidGermanPhone, "Ungültige Telefonnummer (z.B. +49 170 1234567 oder 0170 1234567)"),
+  propertyAddress: z.string()
+    .min(10, "Adresse muss mindestens 10 Zeichen lang sein")
+    .refine(
+      (addr) => germanPostalCodeRegex.test(addr),
+      { message: "Adresse muss eine gültige deutsche Postleitzahl (5 Ziffern) enthalten" }
+    ),
   preferredDate: z.string().min(1, "Bevorzugtes Datum erforderlich"),
   notes: z.string().optional(),
 });
