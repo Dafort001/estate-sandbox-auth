@@ -250,9 +250,6 @@ export default function UploadRawPage() {
       <Card className="mb-6">
         <CardHeader>
           <CardTitle>Dateien hochladen</CardTitle>
-          <CardDescription>
-            Unterstützte Formate: RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF, PEF etc.), Video-RAW (BRAW, R3D, MXF, ARI), TIFF, JPG
-          </CardDescription>
         </CardHeader>
         <CardContent>
           <div
