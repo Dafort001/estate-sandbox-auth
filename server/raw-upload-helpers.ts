@@ -1,27 +1,110 @@
-// RAW file formats and validation
+// RAW file formats and validation (extended list for all professional cameras)
 export const RAW_FILE_EXTENSIONS = [
-  ".cr3",  // Canon
-  ".nef",  // Nikon
-  ".raf",  // Fujifilm
-  ".arw",  // Sony
-  ".dng",  // Adobe DNG (universal)
-  ".rw2",  // Panasonic
-  ".orf",  // Olympus
-  ".crw",  // Canon (older)
-  ".cr2",  // Canon (older)
+  // Canon
+  ".cr2", ".cr3", ".crm", ".crw",
+  // Nikon
+  ".nef", ".nrw",
+  // Sony
+  ".arw", ".sr2", ".srf",
+  // Fujifilm
+  ".raf",
+  // Panasonic
+  ".rw2", ".rwl",
+  // Adobe DNG (universal)
+  ".dng",
+  // Olympus
+  ".orf",
+  // Pentax
+  ".pef",
+  // Video RAW formats
+  ".braw",  // Blackmagic RAW
+  ".r3d",   // RED RAW
+  ".ari",   // ARRI RAW
+  ".mxf",   // Material Exchange Format
+  ".cdng",  // CinemaDNG
+  // Phase One
+  ".iiq",
+  // Hasselblad
+  ".3fr", ".fff",
+  // Sigma
+  ".x3f",
+  // Epson
+  ".erf",
+  // Samsung
+  ".srw",
+  // Mamiya
+  ".mef",
+  // Leaf
+  ".mos",
+  // Phase One (older)
+  ".cap",
+  // Kodak
+  ".kdc",
+  // Standard formats
+  ".tiff", ".tif", ".jpg", ".jpeg",
 ] as const;
 
 export const RAW_MIME_TYPES = [
+  // Canon RAW
   "image/x-canon-cr3",
   "image/x-canon-cr2",
   "image/x-canon-crw",
+  "image/x-canon-crm",
+  // Nikon RAW
   "image/x-nikon-nef",
-  "image/x-fuji-raf",
+  "image/x-nikon-nrw",
+  // Sony RAW
   "image/x-sony-arw",
-  "image/x-adobe-dng",
+  "image/x-sony-sr2",
+  "image/x-sony-srf",
+  // Fujifilm RAW
+  "image/x-fuji-raf",
+  // Panasonic/Leica RAW
   "image/x-panasonic-rw2",
+  "image/x-panasonic-raw",
+  "image/x-leica-rwl",
+  // Adobe DNG
+  "image/x-adobe-dng",
+  "image/dng",
+  // Olympus RAW
   "image/x-olympus-orf",
-  "application/octet-stream", // Fallback for unrecognized RAW files
+  // Pentax RAW
+  "image/x-pentax-pef",
+  // Phase One RAW
+  "image/x-phaseone-iiq",
+  "application/x-captureone-cap",
+  // Hasselblad RAW
+  "image/x-hasselblad-3fr",
+  "image/x-hasselblad-fff",
+  // Sigma RAW
+  "image/x-sigma-x3f",
+  // Mamiya RAW
+  "image/x-mamiya-mef",
+  // Leaf RAW
+  "image/x-leaf-mos",
+  // Epson RAW
+  "image/x-epson-erf",
+  // Samsung RAW
+  "image/x-samsung-srw",
+  // Kodak RAW
+  "image/x-kodak-kdc",
+  // Video RAW formats
+  "video/x-braw",           // Blackmagic RAW
+  "video/x-blackmagic-raw", // Blackmagic RAW (alternate)
+  "video/x-redcode",        // RED R3D
+  "application/r3d",        // RED R3D (alternate)
+  "image/x-ari",            // ARRI RAW
+  "video/x-ari",            // ARRI RAW (alternate)
+  "video/mxf",              // Material Exchange Format
+  "application/mxf",        // MXF (alternate)
+  "video/x-cdng",           // CinemaDNG
+  // Standard formats
+  "image/tiff",
+  "image/jpeg",
+  "video/quicktime",        // Generic video container
+  "video/mp4",              // Generic video container
+  // Fallback for unrecognized RAW files
+  "application/octet-stream",
 ] as const;
 
 export function isRawFile(filename: string): boolean {

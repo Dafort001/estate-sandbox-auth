@@ -94,14 +94,19 @@ export default function UploadRawPage() {
   }, []);
 
   const addFiles = (files: File[]) => {
-    const validExtensions = [".cr3", ".nef", ".raf", ".arw", ".dng"];
+    const validExtensions = [
+      ".cr2", ".cr3", ".crm", ".crw", ".nef", ".nrw", ".arw", ".sr2", ".srf", ".raf",
+      ".rw2", ".rwl", ".dng", ".orf", ".pef", ".braw", ".r3d", ".ari", ".mxf",
+      ".cdng", ".iiq", ".3fr", ".fff", ".x3f", ".erf", ".srw", ".mef", ".mos",
+      ".cap", ".kdc", ".tiff", ".tif", ".jpg", ".jpeg"
+    ];
     const newFiles = files
       .filter((file) => {
         const ext = file.name.toLowerCase().slice(file.name.lastIndexOf("."));
         if (!validExtensions.includes(ext)) {
           toast({
             title: "Ungültiges Dateiformat",
-            description: `${file.name} wird nicht unterstützt. Erlaubt: CR3, NEF, RAF, ARW, DNG`,
+            description: `${file.name} wird nicht unterstützt. Erlaubte Formate: RAW (CR2/CR3/NEF/ARW/DNG etc.), Video-RAW (BRAW/R3D/MXF), TIFF, JPG`,
             variant: "destructive",
           });
           return false;
@@ -246,7 +251,7 @@ export default function UploadRawPage() {
         <CardHeader>
           <CardTitle>Dateien hochladen</CardTitle>
           <CardDescription>
-            Unterstützte Formate: CR3, NEF, RAF, ARW, DNG
+            Unterstützte Formate: RAW (CR2, CR3, NEF, ARW, DNG, RAF, ORF, PEF etc.), Video-RAW (BRAW, R3D, MXF, ARI), TIFF, JPG
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -265,7 +270,7 @@ export default function UploadRawPage() {
             <input
               type="file"
               multiple
-              accept=".cr3,.nef,.raf,.arw,.dng"
+              accept=".cr2,.cr3,.crm,.crw,.nef,.nrw,.arw,.sr2,.srf,.raf,.rw2,.rwl,.dng,.orf,.pef,.braw,.r3d,.ari,.mxf,.cdng,.iiq,.3fr,.fff,.x3f,.erf,.srw,.mef,.mos,.cap,.kdc,.tiff,.tif,.jpg,.jpeg"
               onChange={handleFileSelect}
               className="hidden"
               id="file-input"
@@ -280,7 +285,7 @@ export default function UploadRawPage() {
                 Dateien hierher ziehen oder klicken zum Auswählen
               </p>
               <p className="text-sm text-secondary">
-                RAW-Dateien (CR3, NEF, RAF, ARW, DNG)
+                RAW, Video-RAW, TIFF, JPG (alle gängigen Kamera-Formate)
               </p>
             </label>
           </div>
