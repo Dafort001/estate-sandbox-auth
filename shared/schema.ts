@@ -54,9 +54,13 @@ export const jobs = pgTable("jobs", {
   id: varchar("id").primaryKey(),
   jobNumber: varchar("job_number", { length: 50 }).notNull().unique(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-  propertyName: varchar("property_name", { length: 255 }).notNull(),
-  propertyAddress: text("property_address"),
-  status: varchar("status", { length: 50 }).notNull().default("created"), // 'created', 'in_progress', 'edited_returned', 'completed'
+  propertyName: varchar("property_name", { length: 255 }).notNull(), // customer
+  propertyAddress: text("property_address"), // address
+  status: varchar("status", { length: 50 }).notNull().default("created"), // Demo: 'uploaded', 'processing', 'captioned', 'expose_ready', 'delivered'
+  deadlineAt: bigint("deadline_at", { mode: "number" }), // Optional deadline
+  deliverGallery: varchar("deliver_gallery", { length: 5 }).notNull().default("true"), // 'true' or 'false'
+  deliverAlttext: varchar("deliver_alttext", { length: 5 }).notNull().default("true"),
+  deliverExpose: varchar("deliver_expose", { length: 5 }).notNull().default("false"),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
@@ -87,12 +91,38 @@ export const images = pgTable("images", {
   stackId: varchar("stack_id").references(() => stacks.id, { onDelete: "set null" }),
   originalFilename: varchar("original_filename", { length: 255 }).notNull(),
   renamedFilename: varchar("renamed_filename", { length: 255 }),
-  filePath: text("file_path").notNull(), // R2 storage path
+  filePath: text("file_path").notNull(), // R2 storage path for RAW
+  previewPath: text("preview_path"), // R2 path for 3000px sRGB preview
   fileSize: bigint("file_size", { mode: "number" }),
   mimeType: varchar("mime_type", { length: 100 }),
   exifDate: bigint("exif_date", { mode: "number" }),
   exposureValue: varchar("exposure_value", { length: 10 }), // 'e0', 'e-2', 'e+2', etc.
   positionInStack: bigint("position_in_stack", { mode: "number" }),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// Demo: AI-generated captions for images
+export const captions = pgTable("captions", {
+  id: varchar("id").primaryKey(),
+  imageId: varchar("image_id").notNull().references(() => images.id, { onDelete: "cascade" }),
+  captionText: text("caption_text").notNull(), // Alt-text in German
+  roomType: varchar("room_type", { length: 50 }), // Detected room type
+  confidence: bigint("confidence", { mode: "number" }), // 0-100
+  language: varchar("language", { length: 10 }).notNull().default("de"),
+  version: bigint("version", { mode: "number" }).notNull().default(1),
+  createdAt: bigint("created_at", { mode: "number" }).notNull(),
+});
+
+// Demo: AI-generated property exposés
+export const exposes = pgTable("exposes", {
+  id: varchar("id").primaryKey(),
+  jobId: varchar("job_id").notNull().references(() => jobs.id, { onDelete: "cascade" }),
+  summary: text("summary").notNull(), // Short description
+  highlights: text("highlights"), // JSON array of highlight strings
+  neighborhood: text("neighborhood"), // Optional neighborhood description
+  techDetails: text("tech_details"), // Optional technical details
+  wordCount: bigint("word_count", { mode: "number" }),
+  version: bigint("version", { mode: "number" }).notNull().default(1),
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 
@@ -298,6 +328,7 @@ export const jobsRelations = relations(jobs, ({ one, many }) => ({
     references: [users.id],
   }),
   shoots: many(shoots),
+  exposes: many(exposes),
 }));
 
 export const shootsRelations = relations(shoots, ({ one, many }) => ({
@@ -322,7 +353,7 @@ export const stacksRelations = relations(stacks, ({ one, many }) => ({
   editedImages: many(editedImages),
 }));
 
-export const imagesRelations = relations(images, ({ one }) => ({
+export const imagesRelations = relations(images, ({ one, many }) => ({
   shoot: one(shoots, {
     fields: [images.shootId],
     references: [shoots.id],
@@ -330,6 +361,21 @@ export const imagesRelations = relations(images, ({ one }) => ({
   stack: one(stacks, {
     fields: [images.stackId],
     references: [stacks.id],
+  }),
+  captions: many(captions),
+}));
+
+export const captionsRelations = relations(captions, ({ one }) => ({
+  image: one(images, {
+    fields: [captions.imageId],
+    references: [images.id],
+  }),
+}));
+
+export const exposesRelations = relations(exposes, ({ one }) => ({
+  job: one(jobs, {
+    fields: [exposes.jobId],
+    references: [jobs.id],
   }),
 }));
 
@@ -464,6 +510,10 @@ export type UploadSession = typeof uploadSessions.$inferSelect;
 export type InsertUploadSession = typeof uploadSessions.$inferInsert;
 export type AiJob = typeof aiJobs.$inferSelect;
 export type InsertAiJob = typeof aiJobs.$inferInsert;
+export type Caption = typeof captions.$inferSelect;
+export type InsertCaption = typeof captions.$inferInsert;
+export type Expose = typeof exposes.$inferSelect;
+export type InsertExpose = typeof exposes.$inferInsert;
 
 // Validation Schemas
 export const signupSchema = z.object({
@@ -685,3 +735,28 @@ export const insertEditorialCommentSchema = createInsertSchema(editorialComments
 
 export type InsertEditorialItem = z.infer<typeof insertEditorialItemSchema>;
 export type InsertEditorialComment = z.infer<typeof insertEditorialCommentSchema>;
+
+// Demo Phase - Job/Caption/Expose Schemas
+export const createDemoJobSchema = z.object({
+  customer: z.string().min(1, "Customer name is required"),
+  address: z.string().min(1, "Address is required"),
+  shootCode: z.string().length(5, "Shoot code must be 5 characters").regex(/^[a-z0-9]{5}$/, "Shoot code must be lowercase alphanumeric"),
+  deadlineAt: z.number().optional(),
+  deliverGallery: z.boolean().optional().default(true),
+  deliverAlttext: z.boolean().optional().default(true),
+  deliverExpose: z.boolean().optional().default(false),
+});
+
+export const insertCaptionSchema = createInsertSchema(captions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExposeSchema = createInsertSchema(exposes).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CreateDemoJobInput = z.infer<typeof createDemoJobSchema>;
+export type InsertCaptionInput = z.infer<typeof insertCaptionSchema>;
+export type InsertExposeInput = z.infer<typeof insertExposeSchema>;

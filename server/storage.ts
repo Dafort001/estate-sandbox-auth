@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, seoMetadata, personalAccessTokens, uploadSessions, aiJobs, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment, type SeoMetadata, type PersonalAccessToken, type UploadSession, type AiJob } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, seoMetadata, personalAccessTokens, uploadSessions, aiJobs, captions, exposes, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment, type SeoMetadata, type PersonalAccessToken, type UploadSession, type AiJob, type Caption, type Expose } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -230,6 +230,37 @@ export interface IStorage {
   completeAIJob(id: string, outputImageKey: string, cost: number, credits: number): Promise<void>;
   getUserAIJobs(userId: string): Promise<import("@shared/schema").AiJob[]>;
   getShootAIJobs(shootId: string): Promise<import("@shared/schema").AiJob[]>;
+
+  // Demo: Caption operations
+  createCaption(data: {
+    imageId: string;
+    captionText: string;
+    roomType?: string;
+    confidence?: number;
+    language?: string;
+    version?: number;
+  }): Promise<Caption>;
+  getImageCaptions(imageId: string): Promise<Caption[]>;
+  getJobCaptions(jobId: string): Promise<Caption[]>;
+
+  // Demo: Expose operations
+  createExpose(data: {
+    jobId: string;
+    summary: string;
+    highlights?: string;
+    neighborhood?: string;
+    techDetails?: string;
+    wordCount?: number;
+    version?: number;
+  }): Promise<Expose>;
+  getJobExpose(jobId: string): Promise<Expose | undefined>;
+
+  // Demo: Update image preview path
+  updateImagePreviewPath(id: string, previewPath: string): Promise<void>;
+
+  // Demo: Extended job operations
+  updateJobDeadline(id: string, deadlineAt: number): Promise<void>;
+  updateJobDeliverables(id: string, deliverGallery: boolean, deliverAlttext: boolean, deliverExpose: boolean): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1349,6 +1380,119 @@ export class DatabaseStorage implements IStorage {
       .update(users)
       .set({ stripeCustomerId })
       .where(eq(users.id, userId));
+  }
+
+  // Demo: Caption operations
+  async createCaption(data: {
+    imageId: string;
+    captionText: string;
+    roomType?: string;
+    confidence?: number;
+    language?: string;
+    version?: number;
+  }): Promise<Caption> {
+    const id = randomUUID();
+    const [caption] = await db
+      .insert(captions)
+      .values({
+        id,
+        imageId: data.imageId,
+        captionText: data.captionText,
+        roomType: data.roomType,
+        confidence: data.confidence,
+        language: data.language || "de",
+        version: data.version || 1,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return caption;
+  }
+
+  async getImageCaptions(imageId: string): Promise<Caption[]> {
+    return await db
+      .select()
+      .from(captions)
+      .where(eq(captions.imageId, imageId))
+      .orderBy(desc(captions.version));
+  }
+
+  async getJobCaptions(jobId: string): Promise<Caption[]> {
+    const result = await db
+      .select({
+        caption: captions,
+      })
+      .from(captions)
+      .innerJoin(images, eq(captions.imageId, images.id))
+      .innerJoin(shoots, eq(images.shootId, shoots.id))
+      .where(eq(shoots.jobId, jobId))
+      .orderBy(desc(captions.createdAt));
+    
+    return result.map(r => r.caption);
+  }
+
+  // Demo: Expose operations
+  async createExpose(data: {
+    jobId: string;
+    summary: string;
+    highlights?: string;
+    neighborhood?: string;
+    techDetails?: string;
+    wordCount?: number;
+    version?: number;
+  }): Promise<Expose> {
+    const id = randomUUID();
+    const [expose] = await db
+      .insert(exposes)
+      .values({
+        id,
+        jobId: data.jobId,
+        summary: data.summary,
+        highlights: data.highlights,
+        neighborhood: data.neighborhood,
+        techDetails: data.techDetails,
+        wordCount: data.wordCount,
+        version: data.version || 1,
+        createdAt: Date.now(),
+      })
+      .returning();
+    return expose;
+  }
+
+  async getJobExpose(jobId: string): Promise<Expose | undefined> {
+    const [expose] = await db
+      .select()
+      .from(exposes)
+      .where(eq(exposes.jobId, jobId))
+      .orderBy(desc(exposes.version))
+      .limit(1);
+    return expose || undefined;
+  }
+
+  // Demo: Update image preview path
+  async updateImagePreviewPath(id: string, previewPath: string): Promise<void> {
+    await db
+      .update(images)
+      .set({ previewPath })
+      .where(eq(images.id, id));
+  }
+
+  // Demo: Extended job operations
+  async updateJobDeadline(id: string, deadlineAt: number): Promise<void> {
+    await db
+      .update(jobs)
+      .set({ deadlineAt })
+      .where(eq(jobs.id, id));
+  }
+
+  async updateJobDeliverables(id: string, deliverGallery: boolean, deliverAlttext: boolean, deliverExpose: boolean): Promise<void> {
+    await db
+      .update(jobs)
+      .set({ 
+        deliverGallery: deliverGallery ? "true" : "false",
+        deliverAlttext: deliverAlttext ? "true" : "false",
+        deliverExpose: deliverExpose ? "true" : "false",
+      })
+      .where(eq(jobs.id, id));
   }
 }
 
