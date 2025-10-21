@@ -30,11 +30,9 @@ jobs:
       
       - name: Run linter
         run: npm run lint
-        continue-on-error: true
       
       - name: Type check
         run: npm run check
-        continue-on-error: true
       
       - name: Build application
         run: npm run build
@@ -74,14 +72,12 @@ jobs:
         run: npx wrangler deploy --dry-run --env development
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        continue-on-error: true
       
       - name: Wrangler dry-run (production)
         if: github.ref == 'refs/heads/main'
         run: npx wrangler deploy --dry-run --env production
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        continue-on-error: true
 
   deploy-development:
     name: Deploy to Development
