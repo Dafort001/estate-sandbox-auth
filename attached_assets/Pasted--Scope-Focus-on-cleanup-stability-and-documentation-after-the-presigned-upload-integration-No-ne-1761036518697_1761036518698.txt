@@ -1,0 +1,92 @@
+? Scope
+Focus on cleanup, stability, and documentation after the presigned upload integration.
+No new features — just polish, consistency, and deploy readiness.
+
+1) Remove legacy multipart upload flow
+Files: server/index.ts, server/uploadHandler.ts, server/storage.ts
+Tasks:
+Delete or comment out the old POST /api/uploads/:shootId route.
+Ensure all clients now use /api/uploads/presign for uploads.
+Remove any file-writing to /tmp except where absolutely necessary (e.g., ZIP handling).
+Acceptance:
+No multipart upload routes remain.
+No /tmp I/O occurs during standard image uploads.
+Only presigned PUT uploads are supported.
+
+2) Integrate cleanup job for temporary files
+Files: server/backgroundQueue.ts, server/uploadHandler.ts, or new server/cleanup.ts
+Tasks:
+Implement a simple scheduled cleanup for any remaining temporary directories (if still used for ZIPs or handoffs).
+Use fs.rmSync(path, { recursive: true, force: true }) on known temp paths every few hours.
+Log cleanup runs with a timestamp and count of deleted files.
+Acceptance:
+Temp files older than 6h are automatically deleted.
+No orphaned data remains in /tmp.
+
+3) Add request_id logging
+Files: server/index.ts (global middleware), server/utils/logger.ts
+Tasks:
+Generate a unique request_id for each incoming request.
+Attach it to ctx or req.locals so it’s accessible throughout.
+Include request_id in all error and success logs.
+For production, suppress stack traces and sensitive data.
+Acceptance:
+Every log line includes request_id.
+Stack traces are hidden in PROD logs.
+
+4) Update wrangler.toml for production deployment
+Files: wrangler.toml
+Tasks:
+Ensure separate [env.production] and [env.development] sections exist.
+Bind the correct R2 bucket and environment variables for production.
+Add a vars section for build-time constants (e.g., APP_ENV="production").
+Confirm all secrets are handled via Wrangler Secrets, not hardcoded.
+Acceptance:
+wrangler publish deploys successfully to production.
+R2 and KV bindings match the correct account.
+No secrets appear in source control.
+
+5) Add /healthz endpoint
+Files: server/index.ts
+Tasks:
+Create a lightweight health endpoint:
+GET /healthz → { "status": "ok", "env": "production", "timestamp": <iso> }
+No auth required.
+Used by monitoring and CI/CD deploy checks.
+Acceptance:
+/healthz returns HTTP 200 with JSON body.
+Works in both dev and production.
+
+6) Improve README documentation
+Files: README.md
+Tasks:
+Add sections for:
+Deployment (wrangler publish / dev)
+Presigned upload API (input/output example)
+Auth rules (owner-only uploads)
+File naming standard (v3.1)
+Environment separation
+Mention that the old multipart upload route has been deprecated.
+Acceptance:
+README clearly explains upload flow, naming schema, and deployment setup.
+A new developer can reproduce setup in <10 minutes.
+
+7) Run smoke tests before closing
+Tests to verify:
+GET /healthz → 200
+/api/uploads/presign → works with valid JWT, rejects invalid/expired
+Wrong filename → 422
+Wrong content type → 403
+Presigned URL expires correctly
+/api/services → correct visibility (auth or redacted)
+Acceptance:
+All tests pass; no regression in upload or auth flow.
+
+✅ Definition of Done
+Old multipart upload removed.
+Temp cleanup in place.
+Request ID logging added.
+Health endpoint live.
+Wrangler production-ready.
+Updated README with final documentation.
+All smoke tests passing on staging.

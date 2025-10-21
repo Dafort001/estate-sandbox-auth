@@ -13,12 +13,10 @@ import { rateLimiter } from "hono-rate-limiter";
 import { generateHandoffPackage, generateHandoffToken } from "./handoffPackage";
 import { scheduleEditorReturnProcessing } from "./backgroundQueue";
 import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications";
-import { processUploadedFiles } from "./uploadHandler";
+// Removed: processUploadedFiles - legacy multipart upload handler no longer needed
 import { processEditorReturnZip } from "./zipProcessor";
 import { generateFinalHandoff } from "./finalHandoff";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { tmpdir } from "os";
+// Removed: writeFile, mkdir, join, tmpdir - no longer needed after removing multipart upload
 import { uploadFile, downloadFile } from "./objectStorage";
 
 const app = new Hono();
@@ -1499,143 +1497,10 @@ app.put("/api/stacks/:id/room-type", async (c) => {
   }
 });
 
-// POST /api/uploads/:shootId - Upload photos (SECURED)
-app.post("/api/uploads/:shootId", async (c) => {
-  let tmpDir: string | null = null;
-  try {
-    // SECURITY: Require authentication
-    const authResult = await getAuthUser(c);
-    if (!authResult) {
-      return c.json({ error: "Unauthorized" }, 401);
-    }
-    const { user } = authResult;
-    
-    const shootId = c.req.param("shootId");
-    
-    // Verify shoot exists
-    const shoot = await storage.getShoot(shootId);
-    if (!shoot) {
-      return c.json({ error: "Shoot not found" }, 404);
-    }
-    
-    // Get job to check ownership
-    const job = await storage.getJob(shoot.jobId);
-    if (!job) {
-      return c.json({ error: "Job not found" }, 404);
-    }
-    
-    // SECURITY: Ownership check (unless admin)
-    if (user.role !== "admin" && job.userId !== user.id) {
-      return c.json({ error: "Forbidden: You do not own this job" }, 403);
-    }
-    
-    // Parse multipart form data
-    const formData = await c.req.formData();
-    const files = formData.getAll("photos");
-    
-    if (!files || files.length === 0) {
-      return c.json({ error: "No files uploaded" }, 400);
-    }
-    
-    // SECURITY: Enforce max files per request (50 files)
-    const MAX_FILES = 50;
-    if (files.length > MAX_FILES) {
-      return c.json({ error: `Too many files. Maximum ${MAX_FILES} files per request` }, 413);
-    }
-    
-    // SECURITY: MIME whitelist
-    const ALLOWED_MIMES = ["image/jpeg", "image/jpg", "image/heic", "image/heif"];
-    const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB per file
-    
-    // Get frame count from formData (default to 5)
-    const frameCountValue = formData.get("frameCount");
-    let frameCount: 3 | 5 = 5;
-    if (frameCountValue === "3") {
-      frameCount = 3;
-    }
-    
-    // Convert FormData files to format expected by processUploadedFiles
-    // Save files to temporary directory first
-    tmpDir = join(tmpdir(), `upload-${shootId}-${Date.now()}`);
-    await mkdir(tmpDir, { recursive: true });
-    
-    const multerFiles = [];
-    for (const file of files) {
-      if (file instanceof File) {
-        // SECURITY: Validate MIME type
-        const mimeType = file.type.toLowerCase();
-        if (!ALLOWED_MIMES.includes(mimeType)) {
-          // Clean up before returning error
-          try {
-            const { rm } = await import("fs/promises");
-            await rm(tmpDir, { recursive: true, force: true });
-          } catch {}
-          return c.json({ 
-            error: `Invalid file type: ${file.type}. Allowed types: ${ALLOWED_MIMES.join(", ")}` 
-          }, 415);
-        }
-        
-        const buffer = Buffer.from(await file.arrayBuffer());
-        
-        // SECURITY: Validate file size
-        if (buffer.length > MAX_FILE_SIZE) {
-          // Clean up before returning error
-          try {
-            const { rm } = await import("fs/promises");
-            await rm(tmpDir, { recursive: true, force: true });
-          } catch {}
-          return c.json({ 
-            error: `File too large: ${file.name}. Maximum size: ${MAX_FILE_SIZE / 1024 / 1024}MB` 
-          }, 413);
-        }
-        
-        const filename = file.name;
-        const filepath = join(tmpDir, filename);
-        
-        await writeFile(filepath, buffer);
-        
-        // Create multer-like file object
-        multerFiles.push({
-          fieldname: "photos",
-          originalname: filename,
-          encoding: "7bit",
-          mimetype: mimeType,
-          destination: tmpDir,
-          filename: filename,
-          path: filepath,
-          size: buffer.length,
-          buffer: buffer,
-        });
-      }
-    }
-    
-    // Process uploaded files using existing handler
-    const result = await processUploadedFiles(shootId, job.id, multerFiles as any, frameCount);
-    
-    if (!result.success) {
-      return c.json({ error: result.error || "Failed to process files" }, 500);
-    }
-    
-    return c.json({ 
-      success: true, 
-      stackCount: result.stackCount,
-      imageCount: result.imageCount,
-    });
-  } catch (error) {
-    console.error("Error uploading files:", error);
-    return c.json({ error: "Failed to upload files" }, 500);
-  } finally {
-    // SECURITY: Always clean up temp files
-    if (tmpDir) {
-      try {
-        const { rm } = await import("fs/promises");
-        await rm(tmpDir, { recursive: true, force: true });
-      } catch (cleanupError) {
-        console.error("Failed to cleanup temp directory:", tmpDir, cleanupError);
-      }
-    }
-  }
-});
+// REMOVED: Legacy multipart upload route
+// The old POST /api/uploads/:shootId route has been replaced with the presigned upload flow.
+// Clients should now use POST /api/shoots/:id/presign to get presigned URLs and upload directly to object storage.
+// This eliminates server-side file buffering and improves security and scalability.
 
 // POST /api/projects/:jobId/handoff/:shootId - Generate handoff package
 app.post("/api/projects/:jobId/handoff/:shootId", async (c) => {
