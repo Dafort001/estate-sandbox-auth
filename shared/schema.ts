@@ -123,6 +123,17 @@ export const editedImages = pgTable("edited_images", {
   rejectedAt: bigint("rejected_at", { mode: "number" }),
 });
 
+export const seoMetadata = pgTable("seo_metadata", {
+  id: varchar("id").primaryKey(),
+  pagePath: varchar("page_path", { length: 255 }).notNull().unique(), // e.g., '/', '/preise', '/about'
+  pageTitle: varchar("page_title", { length: 255 }).notNull(),
+  metaDescription: text("meta_description").notNull(),
+  ogImage: varchar("og_image", { length: 500 }),
+  altText: text("alt_text"), // JSON string for page-specific image alt texts
+  updatedAt: bigint("updated_at", { mode: "number" }).notNull(),
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
+});
+
 export const imageFavorites = pgTable("image_favorites", {
   id: varchar("id").primaryKey(),
   userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
@@ -347,6 +358,8 @@ export type EditorToken = typeof editorTokens.$inferSelect;
 export type InsertEditorToken = typeof editorTokens.$inferInsert;
 export type EditedImage = typeof editedImages.$inferSelect;
 export type InsertEditedImage = typeof editedImages.$inferInsert;
+export type SeoMetadata = typeof seoMetadata.$inferSelect;
+export type InsertSeoMetadata = typeof seoMetadata.$inferInsert;
 export type ImageFavorite = typeof imageFavorites.$inferSelect;
 export type InsertImageFavorite = typeof imageFavorites.$inferInsert;
 export type ImageComment = typeof imageComments.$inferSelect;

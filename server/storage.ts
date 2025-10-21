@@ -1,4 +1,4 @@
-import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment } from "@shared/schema";
+import { users, sessions, refreshTokens, passwordResetTokens, orders, jobs, shoots, stacks, images, editorTokens, editedImages, services, bookings, bookingItems, imageFavorites, imageComments, editorialItems, editorialComments, seoMetadata, type User, type Session, type RefreshToken, type PasswordResetToken, type Order, type Job, type Shoot, type Stack, type Image, type EditorToken, type EditedImage, type Service, type Booking, type BookingItem, type ImageFavorite, type ImageComment, type EditorialItem, type EditorialComment, type SeoMetadata } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -169,6 +169,19 @@ export interface IStorage {
   deleteEditorialItem(id: string): Promise<void>;
   createEditorialComment(data: { itemId: string; userId: string; comment: string }): Promise<EditorialComment>;
   getEditorialComments(itemId: string): Promise<EditorialComment[]>;
+  
+  // SEO metadata operations
+  getAllSeoMetadata(): Promise<SeoMetadata[]>;
+  getSeoMetadata(pagePath: string): Promise<SeoMetadata | undefined>;
+  upsertSeoMetadata(data: {
+    pagePath: string;
+    pageTitle: string;
+    metaDescription: string;
+    ogImage?: string;
+    altText?: string;
+    updatedBy: string;
+  }): Promise<SeoMetadata>;
+  deleteSeoMetadata(pagePath: string): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -975,6 +988,76 @@ export class DatabaseStorage implements IStorage {
       .orderBy(editorialComments.createdAt);
     
     return comments;
+  }
+
+  // SEO metadata operations
+  async getAllSeoMetadata(): Promise<SeoMetadata[]> {
+    const metadata = await db
+      .select()
+      .from(seoMetadata)
+      .orderBy(seoMetadata.pagePath);
+    
+    return metadata;
+  }
+
+  async getSeoMetadata(pagePath: string): Promise<SeoMetadata | undefined> {
+    const [metadata] = await db
+      .select()
+      .from(seoMetadata)
+      .where(eq(seoMetadata.pagePath, pagePath));
+    
+    return metadata || undefined;
+  }
+
+  async upsertSeoMetadata(data: {
+    pagePath: string;
+    pageTitle: string;
+    metaDescription: string;
+    ogImage?: string;
+    altText?: string;
+    updatedBy: string;
+  }): Promise<SeoMetadata> {
+    const now = Date.now();
+    const existing = await this.getSeoMetadata(data.pagePath);
+
+    if (existing) {
+      // Update existing record
+      const [updated] = await db
+        .update(seoMetadata)
+        .set({
+          pageTitle: data.pageTitle,
+          metaDescription: data.metaDescription,
+          ogImage: data.ogImage || null,
+          altText: data.altText || null,
+          updatedAt: now,
+          updatedBy: data.updatedBy,
+        })
+        .where(eq(seoMetadata.pagePath, data.pagePath))
+        .returning();
+      
+      return updated;
+    } else {
+      // Insert new record
+      const [inserted] = await db
+        .insert(seoMetadata)
+        .values({
+          id: randomUUID(),
+          pagePath: data.pagePath,
+          pageTitle: data.pageTitle,
+          metaDescription: data.metaDescription,
+          ogImage: data.ogImage || null,
+          altText: data.altText || null,
+          updatedAt: now,
+          updatedBy: data.updatedBy,
+        })
+        .returning();
+      
+      return inserted;
+    }
+  }
+
+  async deleteSeoMetadata(pagePath: string): Promise<void> {
+    await db.delete(seoMetadata).where(eq(seoMetadata.pagePath, pagePath));
   }
 }
 

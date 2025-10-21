@@ -28,6 +28,7 @@ import About from "@/pages/about";
 import FAQ from "@/pages/faq";
 import Downloads from "@/pages/downloads";
 import AdminEditorial from "@/pages/admin-editorial";
+import AdminSeo from "@/pages/admin-seo";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -58,6 +59,7 @@ function Router() {
       <Route path="/jobs" component={Jobs} />
       <Route path="/review/:jobId/:shootId" component={Review} />
       <Route path="/admin/editorial" component={AdminEditorial} />
+      <Route path="/admin/seo" component={AdminSeo} />
       <Route component={NotFound} />
     </Switch>
   );

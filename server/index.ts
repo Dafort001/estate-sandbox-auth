@@ -2077,6 +2077,99 @@ app.get("/api/editorial/:id/comments", async (c) => {
   }
 });
 
+// ========== SEO Metadata Management (Admin Only) ==========
+
+// Get all SEO metadata
+app.get("/api/seo-metadata", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    const metadata = await storage.getAllSeoMetadata();
+    return c.json({ metadata });
+  } catch (error) {
+    console.error("Get SEO metadata error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Get single SEO metadata by page path
+app.get("/api/seo-metadata/:pagePath", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    const pagePath = decodeURIComponent(c.req.param("pagePath"));
+    const metadata = await storage.getSeoMetadata(pagePath);
+    
+    if (!metadata) {
+      return c.json({ error: "Not found" }, 404);
+    }
+    
+    return c.json({ metadata });
+  } catch (error) {
+    console.error("Get SEO metadata error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Upsert SEO metadata
+app.post("/api/seo-metadata", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    const body = await c.req.json();
+    const { pagePath, pageTitle, metaDescription, ogImage, altText } = body;
+    
+    if (!pagePath || !pageTitle || !metaDescription) {
+      return c.json({ error: "Missing required fields" }, 400);
+    }
+    
+    const metadata = await storage.upsertSeoMetadata({
+      pagePath,
+      pageTitle,
+      metaDescription,
+      ogImage,
+      altText,
+      updatedBy: authUser.user.id,
+    });
+    
+    return c.json({ metadata });
+  } catch (error) {
+    console.error("Upsert SEO metadata error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// Delete SEO metadata
+app.delete("/api/seo-metadata/:pagePath", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser || authUser.user.role !== "admin") {
+      return c.json({ error: "Unauthorized" }, 403);
+    }
+    
+    const pagePath = decodeURIComponent(c.req.param("pagePath"));
+    await storage.deleteSeoMetadata(pagePath);
+    
+    return c.json({ success: true });
+  } catch (error) {
+    console.error("Delete SEO metadata error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // Health check endpoint (legacy, kept for backwards compatibility)
 app.get("/api/health", (c) => {
   return c.json({ status: "ok", timestamp: Date.now() });
