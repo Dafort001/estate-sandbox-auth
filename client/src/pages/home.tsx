@@ -205,7 +205,7 @@ export default function Home() {
           }}
           data-testid="menu-drawer"
         >
-          <div className="absolute top-16 right-[5vw] bg-white shadow-lg rounded-lg p-6 min-w-[200px]">
+          <div className="absolute top-16 right-[5vw] bg-white/80 backdrop-blur-sm shadow-lg rounded-lg p-6 min-w-[200px]">
             <div className="flex items-center justify-end mb-6">
               <button
                 onClick={() => setIsMenuOpen(false)}
