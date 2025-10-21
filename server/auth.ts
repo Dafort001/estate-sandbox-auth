@@ -20,11 +20,34 @@ export async function verifyPassword(
   password: string,
   hashedPassword: string,
 ): Promise<boolean> {
-  const [salt, key] = hashedPassword.split(":");
-  const keyBuffer = Buffer.from(key, "hex");
-  const derivedKey = (await scryptAsync(password, salt, SCRYPT_OPTIONS.keylen)) as Buffer;
-  
-  return timingSafeEqual(keyBuffer, derivedKey);
+  try {
+    // Validate hash format (salt:key)
+    const parts = hashedPassword.split(":");
+    if (parts.length !== 2) {
+      return false;
+    }
+
+    const [salt, key] = parts;
+    
+    // Validate salt and key are present
+    if (!salt || !key) {
+      return false;
+    }
+
+    const keyBuffer = Buffer.from(key, "hex");
+    const derivedKey = (await scryptAsync(password, salt, SCRYPT_OPTIONS.keylen)) as Buffer;
+    
+    // Ensure buffers have the same length before comparing
+    if (keyBuffer.length !== derivedKey.length) {
+      return false;
+    }
+    
+    return timingSafeEqual(keyBuffer, derivedKey);
+  } catch (error) {
+    // Invalid hash format or crypto error - return false instead of throwing
+    console.error("Password verification error:", error);
+    return false;
+  }
 }
 
 // Session configuration
