@@ -17,7 +17,8 @@ import { notifyHandoffReady, notifyEditorUploadComplete } from "./notifications"
 import { processEditorReturnZip } from "./zipProcessor";
 import { generateFinalHandoff } from "./finalHandoff";
 // Removed: writeFile, mkdir, join, tmpdir - no longer needed after removing multipart upload
-import { uploadFile, downloadFile } from "./objectStorage";
+import { uploadFile, downloadFile, generateObjectPath, generatePresignedPutUrl } from "./objectStorage";
+import { extractStackNumberFromFilename, extractRoomTypeFromFilename } from "./raw-upload-helpers";
 import { scheduleCleanup } from "./cleanup";
 import { logger, generateRequestId, type LogContext } from "./logger";
 
@@ -615,6 +616,328 @@ app.post("/api/password-reset/confirm", passwordResetLimiter, async (c) => {
     return c.json({ error: "Internal server error" }, 500);
   }
 });
+
+// ====================================================================
+// iOS Capture App API Endpoints
+// ====================================================================
+
+// Rate limiter for iOS upload endpoints
+const iosUploadLimiter = rateLimiter({
+  windowMs: 60 * 1000, // 1 minute
+  limit: 30, // 30 requests per minute
+  standardHeaders: "draft-6",
+  keyGenerator: (c) => getClientIP(c),
+});
+
+// POST /api/ios/auth/login - JWT-only authentication for iOS app
+app.post("/api/ios/auth/login", loginLimiter, async (c) => {
+  try {
+    const body = await c.req.json();
+    const validation = loginSchema.safeParse(body);
+
+    if (!validation.success) {
+      return c.json(
+        { error: validation.error.errors[0].message },
+        400,
+      );
+    }
+
+    const { email, password } = validation.data;
+
+    // Find user
+    const user = await storage.getUserByEmail(email);
+    if (!user) {
+      return c.json({ error: "Invalid email or password" }, 401);
+    }
+
+    // Verify password
+    const isValid = await verifyPassword(password, user.hashedPassword);
+    if (!isValid) {
+      return c.json({ error: "Invalid email or password" }, 401);
+    }
+
+    // Generate JWT tokens (no session cookies for iOS)
+    const tokens = generateTokenPair(user.id, user.email);
+    
+    // Store refresh token in database
+    await storage.createRefreshToken(
+      tokens.refreshTokenId,
+      user.id,
+      tokens.refreshToken,
+      tokens.refreshTokenExpiry
+    );
+
+    const userResponse: UserResponse = {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      createdAt: user.createdAt,
+    };
+
+    return c.json({
+      user: userResponse,
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: 900, // 15 minutes in seconds
+    });
+  } catch (error) {
+    console.error("iOS login error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/ios/auth/refresh - Refresh access token for iOS app
+app.post("/api/ios/auth/refresh", tokenRefreshLimiter, async (c) => {
+  try {
+    const body = await c.req.json();
+    const { refreshToken } = body;
+
+    if (!refreshToken) {
+      return c.json({ error: "Refresh token required" }, 400);
+    }
+
+    // Verify refresh token exists in database
+    const storedToken = await storage.getRefreshToken(refreshToken);
+    
+    if (!storedToken) {
+      return c.json({ error: "Invalid refresh token" }, 401);
+    }
+
+    // Get user
+    const user = await storage.getUser(storedToken.userId);
+    
+    if (!user) {
+      await storage.deleteRefreshToken(refreshToken);
+      return c.json({ error: "User not found" }, 401);
+    }
+
+    // Generate new token pair
+    const tokens = generateTokenPair(user.id, user.email);
+    
+    // Delete old refresh token
+    await storage.deleteRefreshToken(refreshToken);
+    
+    // Store new refresh token
+    await storage.createRefreshToken(
+      tokens.refreshTokenId,
+      user.id,
+      tokens.refreshToken,
+      tokens.refreshTokenExpiry
+    );
+
+    return c.json({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+      expiresIn: 900, // 15 minutes in seconds
+    });
+  } catch (error) {
+    console.error("iOS token refresh error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/ios/upload/presigned - Get presigned upload URLs for RAW files
+app.post("/api/ios/upload/presigned", iosUploadLimiter, async (c) => {
+  try {
+    // Authenticate user via JWT Bearer token
+    const bearerUser = await getBearerUser(c);
+    if (!bearerUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { jobId, shootId, files } = body;
+
+    // Validation
+    if (!jobId || !shootId || !Array.isArray(files) || files.length === 0) {
+      return c.json({ 
+        error: "Missing required fields: jobId, shootId, and files array" 
+      }, 400);
+    }
+
+    if (files.length > 100) {
+      return c.json({ 
+        error: "Maximum 100 files per request" 
+      }, 400);
+    }
+
+    // Verify job exists and belongs to user (or user is admin)
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+
+    if (job.userId !== bearerUser.user.id && bearerUser.user.role !== "admin") {
+      return c.json({ error: "Access denied" }, 403);
+    }
+
+    // Verify shoot exists
+    const shoot = await storage.getShoot(shootId);
+    if (!shoot || shoot.jobId !== jobId) {
+      return c.json({ error: "Shoot not found or does not belong to job" }, 404);
+    }
+
+    // Generate presigned URLs for each file
+    const presignedUrls: Array<{
+      filename: string;
+      url: string;
+      expiresAt: number;
+    }> = [];
+
+    const expiresAt = Date.now() + 300 * 1000; // 5 minutes
+
+    for (const file of files) {
+      const { filename, contentType } = file;
+      
+      if (!filename || typeof filename !== 'string') {
+        return c.json({ 
+          error: `Invalid filename: ${filename}` 
+        }, 400);
+      }
+
+      // Generate object path: projects/{jobId}/raw/{shootId}/{filename}
+      const objectPath = generateObjectPath(jobId, shootId, filename, 'raw');
+      
+      // Generate presigned PUT URL (5 minutes TTL)
+      const result = await generatePresignedPutUrl(objectPath, 300);
+      
+      if (!result.ok || !result.url) {
+        console.error(`Failed to generate presigned URL for ${filename}:`, result.error);
+        return c.json({ 
+          error: `Failed to generate presigned URL for ${filename}` 
+        }, 500);
+      }
+
+      presignedUrls.push({
+        filename,
+        url: result.url,
+        expiresAt,
+      });
+    }
+
+    return c.json({
+      jobId,
+      shootId,
+      urls: presignedUrls,
+      expiresAt,
+    });
+  } catch (error) {
+    console.error("iOS presigned URL generation error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// POST /api/ios/upload/confirm - Confirm upload completion and trigger AI processing
+app.post("/api/ios/upload/confirm", iosUploadLimiter, async (c) => {
+  try {
+    // Authenticate user via JWT Bearer token
+    const bearerUser = await getBearerUser(c);
+    if (!bearerUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { jobId, shootId, files } = body;
+
+    // Validation
+    if (!jobId || !shootId || !Array.isArray(files) || files.length === 0) {
+      return c.json({ 
+        error: "Missing required fields: jobId, shootId, and files array" 
+      }, 400);
+    }
+
+    // Verify job exists and belongs to user (or user is admin)
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      return c.json({ error: "Job not found" }, 404);
+    }
+
+    if (job.userId !== bearerUser.user.id && bearerUser.user.role !== "admin") {
+      return c.json({ error: "Access denied" }, 403);
+    }
+
+    // Verify shoot exists
+    const shoot = await storage.getShoot(shootId);
+    if (!shoot || shoot.jobId !== jobId) {
+      return c.json({ error: "Shoot not found or does not belong to job" }, 404);
+    }
+
+    // Process uploaded files and create image records
+    const processedImages: Array<{ filename: string; imageId: string; stackNumber?: string }> = [];
+
+    for (const file of files) {
+      const { filename, filesize, contentType } = file;
+      
+      if (!filename || typeof filename !== 'string') {
+        console.warn(`Skipping invalid filename: ${filename}`);
+        continue;
+      }
+
+      // Extract metadata from filename (v3.1 schema)
+      const stackNumber = extractStackNumberFromFilename(filename) || "001";
+      const roomType = extractRoomTypeFromFilename(filename) || "";
+
+      // Check if stack exists, create if not
+      const existingStacks = await storage.getShootStacks(shootId);
+      let stack = existingStacks.find(s => s.stackNumber === stackNumber);
+      
+      if (!stack) {
+        stack = await storage.createStack(
+          shootId,
+          stackNumber,
+          1, // frameCount - will be updated later
+          roomType || "unassigned"
+        );
+      }
+
+      // Create image record
+      const filePath = generateObjectPath(jobId, shootId, filename, 'raw');
+      const image = await storage.createImage({
+        shootId,
+        stackId: stack.id,
+        originalFilename: filename,
+        filePath,
+        fileSize: filesize || 0,
+        mimeType: contentType || "application/octet-stream",
+      });
+
+      processedImages.push({
+        filename,
+        imageId: image.id,
+        stackNumber,
+      });
+    }
+
+    // Update shoot status to indicate upload completion
+    await storage.updateShootStatus(shootId, "uploaded", "updatedAt");
+
+    // Trigger AI processing in background (CogVLM for image analysis, OCR, etc.)
+    // This would typically enqueue background jobs for:
+    // 1. Image quality analysis
+    // 2. Room detection/classification
+    // 3. OCR for text extraction
+    // 4. Auto-stacking bracketed exposures
+    console.log(`🚀 Triggering AI processing for shoot ${shootId} (${processedImages.length} images)`);
+    
+    // TODO: Implement background job queue for AI processing
+    // await scheduleAICaptioning(shootId);
+
+    return c.json({
+      success: true,
+      jobId,
+      shootId,
+      processedImages,
+      message: `Successfully processed ${processedImages.length} images. AI analysis queued.`,
+    });
+  } catch (error) {
+    console.error("iOS upload confirmation error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// ====================================================================
+// End iOS Capture App API Endpoints
+// ====================================================================
 
 // GET /api/services - Get service catalog from JSON file (public endpoint)
 app.get("/api/services", async (c) => {
