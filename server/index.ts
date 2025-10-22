@@ -736,6 +736,57 @@ app.post("/api/ios/auth/refresh", tokenRefreshLimiter, async (c) => {
   }
 });
 
+// POST /api/ios/upload/init - Initialize upload session (iOS-specific, uses jobId instead of jobNumber)
+app.post("/api/ios/upload/init", iosUploadLimiter, async (c) => {
+  const logCtx: LogContext = { request_id: c.get("request_id") };
+  
+  try {
+    // Authenticate user via JWT Bearer token
+    const bearerUser = await getBearerUser(c);
+    if (!bearerUser) {
+      logger.warn("iOS upload init: Not authenticated", logCtx);
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    const body = await c.req.json();
+    const { jobId } = body;
+
+    if (!jobId) {
+      logger.warn("Missing jobId in iOS upload init request", logCtx);
+      return c.json({ error: "jobId is required" }, 400);
+    }
+
+    // Verify job exists
+    const job = await storage.getJob(jobId);
+    if (!job) {
+      logger.warn(`Job not found: ${jobId}`, logCtx);
+      return c.json({ error: "Job not found" }, 404);
+    }
+
+    // Check if there's an active shoot for this job
+    let shoot = await storage.getActiveShootForJob(jobId);
+
+    // If no active shoot, create a new one
+    if (!shoot) {
+      shoot = await storage.createShoot(jobId);
+      await storage.updateJobStatus(jobId, "in_progress");
+      logger.info(`Created new shoot ${shoot.id} for job ${jobId}`, logCtx);
+    }
+
+    logger.info(`iOS upload initialized for job ${jobId}, shoot ${shoot.id}`, logCtx);
+
+    return c.json({
+      shootId: shoot.id,
+      shootCode: shoot.shootCode,
+      jobId: job.id,
+      jobNumber: job.jobNumber,
+    });
+  } catch (error) {
+    logger.error("Error initializing iOS upload", error, logCtx);
+    return c.json({ error: "Failed to initialize upload" }, 500);
+  }
+});
+
 // POST /api/ios/upload/presigned - Get presigned upload URLs for RAW files
 app.post("/api/ios/upload/presigned", iosUploadLimiter, async (c) => {
   try {
