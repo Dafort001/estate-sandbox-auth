@@ -1,0 +1,33 @@
+Nr,Kategorie,Seitenname,URL,Funktion,Status,Priorität,Zielgruppe,Besonderheiten
+1,Public Marketing,Homepage,/,Haupteinstieg - Hero - Portfolio - Services,✅ Implementiert,HIGH,Alle Besucher,Minimalistisch - Sticky Header - Image Strip
+2,Public Marketing,Galerie,/galerie,Portfolio-Showcase mit Masonry Layout,✅ Implementiert,MEDIUM,Potenzielle Kunden,Lightbox - Progressive Loading - Performance-optimiert
+3,Public Marketing,Blog Übersicht,/blog,Blog-Artikel-Übersicht,✅ Implementiert,MEDIUM,SEO - Content Marketing,Mock-Daten - Schema.org
+4,Public Marketing,Blog Post,/blog/:slug,Einzelner Blog-Artikel,✅ Implementiert,MEDIUM,Leser,Mock-Daten
+5,Public Marketing,Über uns,/about,Unternehmensvorstellung - Team - Vision,✅ Implementiert,MEDIUM,Vertrauensaufbau,
+6,Service & Booking,Preise,/preise,Umfassende Preisübersicht (8 Sektionen),✅ Implementiert,HIGH,Kunden,Sehr detailliert - 8 Service-Kategorien
+7,Service & Booking,Preisliste,/preisliste,Interne Preisliste (kompakt),✅ Implementiert,MEDIUM,B2B - Intern,25 Services in 7 Kategorien
+8,Service & Booking,Buchung,/buchen,Multi-Step Booking Wizard (5 Steps),✅ Implementiert,HIGH,Neue Kunden,Google Maps - TidyCal - Komplex
+9,Service & Booking,Buchungsbestätigung,/booking-confirmation,Bestätigungsseite nach Buchung,✅ Implementiert,MEDIUM,Kunden,
+10,Service & Booking,FAQ,/faq,Häufig gestellte Fragen,✅ Implementiert,MEDIUM,Alle Besucher,Accordion-Layout
+11,Legal & Info,Impressum,/impressum,Gesetzliches Impressum,✅ Implementiert,LOW,Rechtlich erforderlich,
+12,Legal & Info,AGB,/agb,Allgemeine Geschäftsbedingungen,✅ Implementiert,LOW,Rechtlich erforderlich,
+13,Legal & Info,Datenschutz,/datenschutz,Datenschutzerklärung (DSGVO),✅ Implementiert,LOW,Rechtlich erforderlich,
+14,Legal & Info,Kontakt,/kontakt,Kontaktinformationen,✅ Implementiert,MEDIUM,Alle Besucher,
+15,Legal & Info,Kontaktformular,/kontakt-formular,Kontaktformular für Anfragen,✅ Implementiert,MEDIUM,Alle Besucher,Mailgun Integration geplant
+16,Authentication,Login,/login,Benutzer-Anmeldung,✅ Implementiert,HIGH,Kunden - Admins,Session-basiert - Scrypt Hashing
+17,Authentication,Registrierung,/register,Account-Erstellung,✅ Implementiert,HIGH,Neue Kunden,Auto-Login
+18,Customer Portal,Dashboard,/dashboard,Kunden-Übersichtsseite,✅ Implementiert,HIGH,Eingeloggte Kunden,Hub - Quick Actions
+19,Customer Portal,Jobs,/jobs,Übersicht aller Fotografie-Aufträge,✅ Implementiert,HIGH,Eingeloggte Kunden,Rolle-basiert - Status-Filter
+20,Customer Portal,Job Detail,/job/:id,Detailansicht eines Jobs,✅ Implementiert,MEDIUM,Kunden - Admins,Timeline - Shoots - Kommentare
+21,Customer Portal,Review/Gallery,/review/:jobId/:shootId,Client Gallery - Bildanzeige mit Kollaboration,✅ Implementiert,HIGH,Kunden,Favoriten - Kommentare - Downloads - Lightbox
+22,Customer Portal,Downloads,/downloads,Download-Zentrale für alle Dateien,✅ Implementiert,MEDIUM,Kunden,RAW - Bearbeitete Bilder - ZIP
+23,Internal Workflow,Intake,/intake,Intake-Formular für neue Aufträge,✅ Implementiert,MEDIUM,Admins - Fotografen,Detaillierte Auftragserfassung
+24,Internal Workflow,Upload RAW,/upload-raw,RAW-Datei-Upload durch Fotografen,✅ Implementiert,MEDIUM,Fotografen,30+ Formate - Auto-Stacking - Object Storage
+25,Internal Workflow,Demo Upload,/demo-upload,Test-Upload-Seite,✅ Implementiert,LOW,Development,Testing
+26,Internal Workflow,Demo Jobs,/demo-jobs,Demo Job-Liste,✅ Implementiert,LOW,Development,Seeded Demo-Daten
+27,Admin Tools,Admin Editorial,/admin/editorial,Content-Management für Blog/Galerie,✅ Implementiert,LOW,Admins,CRUD - Rich-Text-Editor
+28,Admin Tools,Admin SEO,/admin/seo,SEO-Management-Dashboard,✅ Implementiert,LOW,Admins,Meta-Tags - Sitemap - Analytics
+29,Admin Tools,AI Lab,/ai-lab,AI-Bildverarbeitung Testumgebung,✅ Implementiert,LOW,Admins - Development,Replicate API - Modal Labs
+30,Legacy,Gallery (Old),/gallery,Alte Gallery-Seite,⚠️ Duplikat,TO CONSOLIDATE,Veraltet,Zu konsolidieren mit /galerie
+31,Legacy,Order Form (Old),/order,Altes Bestellformular,⚠️ Duplikat,TO CONSOLIDATE,Veraltet,Zu konsolidieren mit /buchen
+32,Error,404 Not Found,/*,Fehlerseite,✅ Implementiert,LOW,Alle,
