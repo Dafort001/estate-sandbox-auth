@@ -27,6 +27,7 @@ The frontend is a React 18 SPA using Wouter for routing, Shadcn UI components, a
 - **Google Maps Integration**: Rooftop-accurate address verification using Google Places Autocomplete, Geocoding API for validation, and Static Maps API for thumbnail previews. Address data (lat/lng/placeId/formatted) stored in orders, jobs, and bookings tables.
 - **Photo Workflow System**: Manages jobs, shoots, image stacks (bracketed images), RAW file handling, secure editor tokens, filename conventions, auto-stacking, ZIP handoff packages, and editor returns.
 - **Client Gallery with Collaboration Features**: Displays completed projects, an image viewer with lightbox, a favorites system, and a comments system for client feedback on images. Includes bulk and individual image download functionality.
+- **QA-Autofix System with Naming Policy v3.1**: System-Check Framework with plugin-based architecture validating authentication, routes, upload system, naming conventions, room taxonomy (34 types). Reports in JSON/Markdown format, severity-based exit codes (0/1/2/3). CLI: `tsx server/selftest/cli.ts`
 - **Development Server**: Express + Vite middleware for HMR and proxied API requests.
 - **Production Server**: Hono serves static files and API requests, optimized for Cloudflare Workers.
 
@@ -43,6 +44,13 @@ The frontend is a React 18 SPA using Wouter for routing, Shadcn UI components, a
 
 ### System Design Choices
 The architecture emphasizes Cloudflare Workers compatibility using Hono. It separates development (Express+Vite) and production (Hono) environments. Security features include Scrypt hashing, HTTP-only cookies, `SameSite=lax`, and secure environment variable management. Specific implementations for the homepage, gallery, and blog use custom JavaScript and CSS techniques for precise layout and responsiveness. SEO is handled via a `SEOHead` component, Schema.org templates, a sitemap, and robots.txt.
+
+### Quality Assurance & CI/CD
+**Safe-Check Framework (v2.0.0 Planned):**
+- **Current (v1.0.0)**: Plugin-based validation system with 4 operational plugins (Auth, Routes, Upload, Naming). Reports real issues, detected missing endpoints in production code.
+- **Planned Extensions**: OpenAPI schema validation, TypeScript/Lint checks, mock services (R2/Stripe/Mailgun), database migration dry-run, E2E smoke flow (Upload→Payment→AI→Delivery).
+- **CI/CD Integration**: GitHub Actions workflow, pre-commit hooks (Husky), automated PR comments, deployment gates based on severity.
+- **Architecture**: See `server/selftest/ARCHITECTURE.md` for detailed plugin specs, roadmap, and technical decisions.
 
 ## External Dependencies
 - **Database**: PostgreSQL (Neon)
