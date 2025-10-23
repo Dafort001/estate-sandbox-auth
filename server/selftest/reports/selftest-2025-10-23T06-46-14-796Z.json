@@ -1,0 +1,147 @@
+{
+  "timestamp": "2025-10-23T06:46:14.794Z",
+  "version": "1.0.0",
+  "environment": "development",
+  "totalChecks": 15,
+  "passed": 14,
+  "failed": 0,
+  "warnings": 1,
+  "skipped": 0,
+  "results": [
+    {
+      "id": "auth-jwt-secret",
+      "name": "JWT Secret",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "JWT_SECRET is properly configured",
+      "timestamp": "2025-10-23T06:46:14.680Z"
+    },
+    {
+      "id": "auth-session-secret",
+      "name": "Session Secret",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "SESSION_SECRET is properly configured",
+      "timestamp": "2025-10-23T06:46:14.681Z"
+    },
+    {
+      "id": "auth-scrypt",
+      "name": "Scrypt Password Hashing",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Scrypt password hashing is working correctly",
+      "timestamp": "2025-10-23T06:46:14.722Z"
+    },
+    {
+      "id": "auth-rate-limiting",
+      "name": "Rate Limiting Configuration",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Rate limiting middleware (hono-rate-limiter) is installed",
+      "timestamp": "2025-10-23T06:46:14.744Z"
+    },
+    {
+      "id": "routes-critical-missing",
+      "name": "Critical API Endpoints",
+      "status": "warning",
+      "severity": "P1",
+      "message": "Some critical API endpoints may not be defined",
+      "details": "Potentially missing: /api/users/me",
+      "autoFixAvailable": false,
+      "timestamp": "2025-10-23T06:46:14.768Z"
+    },
+    {
+      "id": "routes-auth",
+      "name": "Authentication Endpoints",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Authentication endpoints are defined",
+      "details": "Endpoints: /api/register, /api/login, /api/logout",
+      "timestamp": "2025-10-23T06:46:14.768Z"
+    },
+    {
+      "id": "routes-qa-autofix",
+      "name": "QA-Autofix Endpoints",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "QA-Autofix endpoints are defined",
+      "details": "Endpoints: /api/roomtypes, /api/images/:id/classify, /api/images/classify/bulk",
+      "timestamp": "2025-10-23T06:46:14.769Z"
+    },
+    {
+      "id": "routes-upload",
+      "name": "Upload Endpoints",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Upload endpoints are defined",
+      "details": "Endpoints: /api/upload/raw, /api/upload/demo",
+      "timestamp": "2025-10-23T06:46:14.769Z"
+    },
+    {
+      "id": "upload-r2-config",
+      "name": "Cloudflare R2 Configuration",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "All Cloudflare R2 environment variables are set",
+      "timestamp": "2025-10-23T06:46:14.769Z"
+    },
+    {
+      "id": "upload-raw-formats",
+      "name": "RAW Format Support",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "RAW format support configured (30 formats)",
+      "details": "Expected formats: .cr2, .cr3, .nef, .arw, .dng, .orf, .rw2, .raf, .raw, .3fr...",
+      "timestamp": "2025-10-23T06:46:14.769Z"
+    },
+    {
+      "id": "upload-naming-utils",
+      "name": "File Naming Utilities",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "File naming utilities v3.1 are working correctly",
+      "timestamp": "2025-10-23T06:46:14.782Z"
+    },
+    {
+      "id": "upload-limits",
+      "name": "Upload Size Limits",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Upload size limits configured",
+      "details": "Max file size: 100MB",
+      "timestamp": "2025-10-23T06:46:14.782Z"
+    },
+    {
+      "id": "naming-room-taxonomy",
+      "name": "Room Type Taxonomy",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Room type taxonomy configured (34 types, 3 categories)",
+      "timestamp": "2025-10-23T06:46:14.790Z"
+    },
+    {
+      "id": "naming-pattern",
+      "name": "Naming Pattern v3.1",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Naming pattern v3.1 validation working correctly",
+      "details": "Format: {date}-{shootcode}_{room_type}_{index}_v{ver}.jpg",
+      "timestamp": "2025-10-23T06:46:14.792Z"
+    },
+    {
+      "id": "naming-room-synonyms",
+      "name": "Room Type Synonyms",
+      "status": "pass",
+      "severity": "INFO",
+      "message": "Room type synonyms configured (916 synonyms across 95 room types)",
+      "timestamp": "2025-10-23T06:46:14.793Z"
+    }
+  ],
+  "summary": {
+    "p0Failures": 0,
+    "p1Failures": 0,
+    "p2Failures": 0,
+    "autoFixesAvailable": 0,
+    "autoFixesApplied": 0
+  }
+}
