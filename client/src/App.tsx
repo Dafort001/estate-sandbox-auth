@@ -40,6 +40,10 @@ import CaptureIndex from "@/pages/capture/index";
 import CaptureCamera from "@/pages/capture/camera";
 import CaptureReview from "@/pages/capture/review";
 import CaptureUpload from "@/pages/capture/upload";
+import AppSplash from "@/pages/app/splash";
+import AppCamera from "@/pages/app/camera";
+import AppGallery from "@/pages/app/gallery";
+import AppUpload from "@/pages/app/upload";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -82,6 +86,10 @@ function Router() {
       <Route path="/capture/camera" component={CaptureCamera} />
       <Route path="/capture/review" component={CaptureReview} />
       <Route path="/capture/upload" component={CaptureUpload} />
+      <Route path="/app" component={AppSplash} />
+      <Route path="/app/camera" component={AppCamera} />
+      <Route path="/app/gallery" component={AppGallery} />
+      <Route path="/app/upload" component={AppUpload} />
       <Route component={NotFound} />
     </Switch>
   );
