@@ -35,6 +35,7 @@ import DemoUpload from "@/pages/demo-upload";
 import DemoJobs from "@/pages/demo-jobs";
 import DemoJobDetail from "@/pages/demo-job-detail";
 import DocsRoomsSpec from "@/pages/docs-rooms-spec";
+import GalleryClassify from "@/pages/gallery-classify";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -72,6 +73,7 @@ function Router() {
       <Route path="/demo-jobs" component={DemoJobs} />
       <Route path="/job/:id" component={DemoJobDetail} />
       <Route path="/docs/rooms-spec" component={DocsRoomsSpec} />
+      <Route path="/gallery/classify/:shootId" component={GalleryClassify} />
       <Route component={NotFound} />
     </Switch>
   );

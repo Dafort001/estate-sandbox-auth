@@ -2037,6 +2037,39 @@ app.get("/api/shoots/:id/stacks", async (c) => {
   }
 });
 
+// GET /api/shoots/:id/images - Get all RAW images for a shoot (for classification UI)
+app.get("/api/shoots/:id/images", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    // Only admins can access classification UI
+    if (authUser.user.role !== "admin") {
+      return c.json({ error: "Admin access required" }, 403);
+    }
+
+    const shootId = c.req.param("id");
+    
+    // Get all images for this shoot
+    const { db } = await import("./db");
+    const { images } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    
+    const shootImages = await db.query.images.findMany({
+      where: eq(images.shootId, shootId),
+      orderBy: (images, { asc }) => [asc(images.originalFilename)],
+    });
+
+    return c.json(shootImages);
+  } catch (error) {
+    console.error("Error getting shoot images:", error);
+    return c.json({ error: "Failed to get images" }, 500);
+  }
+});
+
 // PUT /api/stacks/:id/room-type - Assign room type to stack
 app.put("/api/stacks/:id/room-type", async (c) => {
   try {
