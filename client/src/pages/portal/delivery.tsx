@@ -5,7 +5,7 @@ import { ArrowLeft, Download, CheckCircle, FileArchive, Image as ImageIcon } fro
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { SEOHead } from "@/components/SEOHead";
 
@@ -26,7 +26,7 @@ export default function Delivery() {
   const { toast } = useToast();
   const [downloading, setDownloading] = useState<string | null>(null);
 
-  const { data: packages } = useQuery<DeliveryPackage[]>({
+  const { data: packages, isLoading, isError } = useQuery<DeliveryPackage[]>({
     queryKey: ["/api/jobs", jobId, "delivery"],
     enabled: !!jobId,
     // Mock data für Demo
@@ -130,9 +130,43 @@ export default function Delivery() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <div className="space-y-6">
-          {/* Success Message */}
-          <Card className="border-green-500/20 bg-green-500/5">
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card>
+              <CardContent className="pt-6">
+                <Skeleton className="h-24 w-full" />
+              </CardContent>
+            </Card>
+            {[1, 2, 3].map((i) => (
+              <Card key={i}>
+                <CardHeader>
+                  <Skeleton className="h-6 w-3/4" />
+                  <Skeleton className="h-4 w-1/2 mt-2" />
+                </CardHeader>
+                <CardContent>
+                  <Skeleton className="h-10 w-full" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : isError ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <h3 className="text-xl font-semibold mb-2 text-destructive" data-testid="text-error-title">
+                Fehler beim Laden
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md mb-6" data-testid="text-error-description">
+                Die Download-Pakete konnten nicht geladen werden. Bitte versuchen Sie es erneut.
+              </p>
+              <Button onClick={() => setLocation("/portal/uploads")} data-testid="button-back-to-uploads">
+                Zurück zur Übersicht
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {/* Success Message */}
+            <Card className="border-green-500/20 bg-green-500/5">
             <CardContent className="flex items-center gap-3 pt-6">
               <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
                 <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
@@ -211,6 +245,7 @@ export default function Delivery() {
             ))}
           </div>
         </div>
+        )}
       </div>
     </div>
   );

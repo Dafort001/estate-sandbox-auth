@@ -5,6 +5,7 @@ import { ArrowLeft, CreditCard, Check } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -29,7 +30,7 @@ export default function Payment() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
 
-  const { data: job } = useQuery<Job>({
+  const { data: job, isLoading, isError } = useQuery<Job>({
     queryKey: ["/api/jobs", jobId],
     enabled: !!jobId,
   });
@@ -46,11 +47,7 @@ export default function Payment() {
 
   const paymentMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`/api/jobs/${jobId}/create-checkout`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) throw new Error("Failed to create checkout");
+      const response = await apiRequest("POST", `/api/jobs/${jobId}/create-checkout`);
       return response.json();
     },
     onSuccess: (data: any) => {
@@ -100,9 +97,50 @@ export default function Payment() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8 max-w-2xl">
-        <div className="space-y-6">
-          {/* Pricing Breakdown */}
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-4 w-1/2 mt-2" />
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="flex items-center justify-between">
+                    <Skeleton className="h-10 w-2/3" />
+                    <Skeleton className="h-6 w-20" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/3" />
+                <Skeleton className="h-4 w-1/2 mt-2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-12 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+        ) : isError ? (
           <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <h3 className="text-xl font-semibold mb-2 text-destructive" data-testid="text-error-title">
+                Fehler beim Laden
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md mb-6" data-testid="text-error-description">
+                Der Auftrag konnte nicht geladen werden. Bitte versuchen Sie es erneut.
+              </p>
+              <Button onClick={() => setLocation("/portal/uploads")} data-testid="button-back-to-uploads">
+                Zurück zur Übersicht
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {/* Pricing Breakdown */}
+            <Card>
             <CardHeader>
               <CardTitle>Kostenaufstellung</CardTitle>
               <CardDescription>Übersicht Ihrer Bestellung</CardDescription>
@@ -167,7 +205,8 @@ export default function Payment() {
               </p>
             </CardContent>
           </Card>
-        </div>
+          </div>
+        )}
       </div>
     </div>
   );

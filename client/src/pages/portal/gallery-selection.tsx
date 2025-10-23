@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import { SEOHead } from "@/components/SEOHead";
 
 type Image = {
@@ -23,19 +23,14 @@ export default function GallerySelection() {
   const { toast } = useToast();
   const [selectedImages, setSelectedImages] = useState<Set<string>>(new Set());
 
-  const { data: images, isLoading } = useQuery<Image[]>({
+  const { data: images, isLoading, isError } = useQuery<Image[]>({
     queryKey: ["/api/jobs", jobId, "images"],
     enabled: !!jobId,
   });
 
   const selectMutation = useMutation({
     mutationFn: async (imageIds: string[]) => {
-      const response = await fetch(`/api/jobs/${jobId}/select-images`, {
-        method: "POST",
-        body: JSON.stringify({ imageIds }),
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!response.ok) throw new Error("Failed to save selection");
+      const response = await apiRequest("POST", `/api/jobs/${jobId}/select-images`, { imageIds });
       return response.json();
     },
     onSuccess: () => {
@@ -117,6 +112,20 @@ export default function GallerySelection() {
               <Skeleton key={i} className="aspect-square rounded-lg" />
             ))}
           </div>
+        ) : isError ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <h3 className="text-xl font-semibold mb-2 text-destructive" data-testid="text-error-title">
+                Fehler beim Laden
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md mb-6" data-testid="text-error-description">
+                Die Bilder konnten nicht geladen werden. Bitte versuchen Sie es erneut.
+              </p>
+              <Button onClick={() => setLocation("/portal/uploads")} data-testid="button-back-to-uploads">
+                Zurück zur Übersicht
+              </Button>
+            </CardContent>
+          </Card>
         ) : !images || images.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">

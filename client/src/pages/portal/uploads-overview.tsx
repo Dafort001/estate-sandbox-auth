@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { queryClient } from "@/lib/queryClient";
 import { SEOHead } from "@/components/SEOHead";
 
 type Job = {
@@ -25,7 +26,7 @@ type Job = {
 export default function UploadsOverview() {
   const [, setLocation] = useLocation();
 
-  const { data: jobs, isLoading } = useQuery<Job[]>({
+  const { data: jobs, isLoading, isError } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
   });
 
@@ -73,6 +74,20 @@ export default function UploadsOverview() {
               </Card>
             ))}
           </div>
+        ) : isError ? (
+          <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <h3 className="text-xl font-semibold mb-2 text-destructive" data-testid="text-error-title">
+                Fehler beim Laden
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md mb-6" data-testid="text-error-description">
+                Die Aufträge konnten nicht geladen werden. Bitte versuchen Sie es erneut.
+              </p>
+              <Button onClick={() => queryClient.refetchQueries({ queryKey: ["/api/jobs"] })} data-testid="button-retry">
+                Erneut versuchen
+              </Button>
+            </CardContent>
+          </Card>
         ) : !jobs || jobs.length === 0 ? (
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-16">

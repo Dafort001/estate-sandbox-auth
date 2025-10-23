@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Skeleton } from "@/components/ui/skeleton";
 import { SEOHead } from "@/components/SEOHead";
 
 type Job = {
@@ -28,7 +29,7 @@ export default function StatusTimeline() {
   const { jobId } = useParams<{ jobId: string }>();
   const [, setLocation] = useLocation();
 
-  const { data: job } = useQuery<Job>({
+  const { data: job, isLoading, isError } = useQuery<Job>({
     queryKey: ["/api/jobs", jobId],
     enabled: !!jobId,
   });
@@ -84,7 +85,7 @@ export default function StatusTimeline() {
 
   const timeline = job ? getTimeline(job.status) : [];
   const completedCount = timeline.filter(e => e.status === "completed").length;
-  const progress = (completedCount / timeline.length) * 100;
+  const progress = timeline.length > 0 ? (completedCount / timeline.length) * 100 : 0;
 
   return (
     <div className="min-h-screen bg-background">
@@ -124,9 +125,49 @@ export default function StatusTimeline() {
 
       {/* Content */}
       <div className="container mx-auto px-4 py-8 max-w-3xl">
-        <div className="space-y-6">
-          {/* Progress Overview */}
+        {isLoading ? (
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <Skeleton className="h-6 w-1/2" />
+                <Skeleton className="h-4 w-1/3 mt-2" />
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-2 w-full" />
+                <Skeleton className="h-4 w-1/4 mt-2" />
+              </CardContent>
+            </Card>
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="flex gap-4">
+                  <Skeleton className="w-10 h-10 rounded-full flex-shrink-0" />
+                  <div className="flex-1">
+                    <Skeleton className="h-6 w-1/3 mb-2" />
+                    <Skeleton className="h-4 w-2/3 mb-1" />
+                    <Skeleton className="h-3 w-1/4" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : isError ? (
           <Card>
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <h3 className="text-xl font-semibold mb-2 text-destructive" data-testid="text-error-title">
+                Fehler beim Laden
+              </h3>
+              <p className="text-muted-foreground text-center max-w-md" data-testid="text-error-description">
+                Der Auftrag konnte nicht geladen werden. Bitte versuchen Sie es erneut.
+              </p>
+              <Button onClick={() => setLocation("/portal/uploads")} className="mt-4" data-testid="button-back-to-uploads">
+                Zurück zur Übersicht
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-6">
+            {/* Progress Overview */}
+            <Card>
             <CardHeader>
               <CardTitle>Fortschritt</CardTitle>
               <CardDescription>
@@ -213,6 +254,7 @@ export default function StatusTimeline() {
             </Card>
           )}
         </div>
+        )}
       </div>
     </div>
   );
