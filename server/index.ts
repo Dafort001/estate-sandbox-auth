@@ -1690,6 +1690,128 @@ app.get("/api/image/:id/comments", async (c) => {
   }
 });
 
+// PATCH /api/images/:id/classify - Classify a single RAW image with room type
+app.patch("/api/images/:id/classify", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    // Only admins can classify images
+    if (authUser.user.role !== "admin") {
+      return c.json({ error: "Admin access required" }, 403);
+    }
+
+    const imageId = c.req.param("id");
+    const body = await c.req.json();
+    const { classifyImageSchema } = await import("@shared/schema");
+    
+    const validation = classifyImageSchema.safeParse(body);
+    if (!validation.success) {
+      return c.json({ error: validation.error.errors[0].message }, 400);
+    }
+
+    const { roomType } = validation.data;
+
+    // Validate room type against taxonomy
+    const { isValidRoomType } = await import("../shared/room-types");
+    if (!isValidRoomType(roomType)) {
+      return c.json({ error: `Invalid room type: ${roomType}` }, 400);
+    }
+
+    // Get the image
+    const { db } = await import("./db");
+    const { images } = await import("@shared/schema");
+    const { eq } = await import("drizzle-orm");
+    
+    const existingImage = await db.query.images.findFirst({
+      where: eq(images.id, imageId),
+    });
+
+    if (!existingImage) {
+      return c.json({ error: "Image not found" }, 404);
+    }
+
+    // Update the image with room type and classification timestamp
+    await db
+      .update(images)
+      .set({
+        roomType,
+        classifiedAt: Date.now(),
+      })
+      .where(eq(images.id, imageId));
+
+    return c.json({
+      success: true,
+      imageId,
+      roomType,
+      classifiedAt: Date.now(),
+    });
+  } catch (error) {
+    console.error("Classify image error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
+// PATCH /api/images/classify/bulk - Classify multiple RAW images with the same room type
+app.patch("/api/images/classify/bulk", async (c) => {
+  try {
+    const authUser = await getAuthUser(c);
+    
+    if (!authUser) {
+      return c.json({ error: "Not authenticated" }, 401);
+    }
+
+    // Only admins can classify images
+    if (authUser.user.role !== "admin") {
+      return c.json({ error: "Admin access required" }, 403);
+    }
+
+    const body = await c.req.json();
+    const { bulkClassifyImagesSchema } = await import("@shared/schema");
+    
+    const validation = bulkClassifyImagesSchema.safeParse(body);
+    if (!validation.success) {
+      return c.json({ error: validation.error.errors[0].message }, 400);
+    }
+
+    const { imageIds, roomType } = validation.data;
+
+    // Validate room type against taxonomy
+    const { isValidRoomType } = await import("../shared/room-types");
+    if (!isValidRoomType(roomType)) {
+      return c.json({ error: `Invalid room type: ${roomType}` }, 400);
+    }
+
+    // Update all images
+    const { db } = await import("./db");
+    const { images } = await import("@shared/schema");
+    const { inArray } = await import("drizzle-orm");
+    
+    const classifiedAt = Date.now();
+    
+    await db
+      .update(images)
+      .set({
+        roomType,
+        classifiedAt,
+      })
+      .where(inArray(images.id, imageIds));
+
+    return c.json({
+      success: true,
+      count: imageIds.length,
+      roomType,
+      classifiedAt,
+    });
+  } catch (error) {
+    console.error("Bulk classify images error:", error);
+    return c.json({ error: "Internal server error" }, 500);
+  }
+});
+
 // GET /api/download/favorites - Download all favorited images as ZIP
 app.get("/api/download/favorites", async (c) => {
   try {

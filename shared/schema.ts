@@ -640,12 +640,24 @@ export const createStackSchema = z.object({
   frameCount: z.number().int().min(3).max(5),
 });
 
+// QA-Autofix: Image Classification Schemas
+export const classifyImageSchema = z.object({
+  roomType: z.string().min(1), // Any room type from taxonomy
+});
+
+export const bulkClassifyImagesSchema = z.object({
+  imageIds: z.array(z.string().min(1)).min(1).max(100, "Maximum 100 images per request"),
+  roomType: z.string().min(1), // Same room type for all images
+});
+
 export type CreateJobInput = z.infer<typeof createJobSchema>;
 export type InitUploadInput = z.infer<typeof initUploadSchema>;
 export type PresignedUploadInput = z.infer<typeof presignedUploadSchema>;
 export type RoomType = z.infer<typeof roomTypeSchema>;
 export type AssignRoomTypeInput = z.infer<typeof assignRoomTypeSchema>;
 export type CreateStackInput = z.infer<typeof createStackSchema>;
+export type ClassifyImageInput = z.infer<typeof classifyImageSchema>;
+export type BulkClassifyImagesInput = z.infer<typeof bulkClassifyImagesSchema>;
 
 export interface PresignedUrlResponse {
   filename: string;
