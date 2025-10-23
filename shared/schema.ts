@@ -110,6 +110,11 @@ export const images = pgTable("images", {
   exifDate: bigint("exif_date", { mode: "number" }),
   exposureValue: varchar("exposure_value", { length: 10 }), // 'e0', 'e-2', 'e+2', etc.
   positionInStack: bigint("position_in_stack", { mode: "number" }),
+  // Naming Policy v3.1 fields
+  roomType: varchar("room_type", { length: 50 }), // Classified room type (see shared/room-types.ts)
+  filenamePatternVersion: varchar("filename_pattern_version", { length: 10 }).default("v3.1"), // Naming pattern version
+  validatedAt: bigint("validated_at", { mode: "number" }), // Timestamp when filename was validated against v3.1
+  classifiedAt: bigint("classified_at", { mode: "number" }), // Timestamp when room_type was classified
   createdAt: bigint("created_at", { mode: "number" }).notNull(),
 });
 

@@ -1002,6 +1002,33 @@ app.get("/api/services", async (c) => {
   }
 });
 
+// GET /api/roomtypes - Get room taxonomy (public endpoint)
+app.get("/api/roomtypes", async (c) => {
+  try {
+    const { 
+      ALL_ROOM_TYPES, 
+      getRoomsByCategory, 
+      getAllRoomsWithMeta,
+      ROOM_SYNONYMS,
+      ROOM_CATEGORIES,
+      KEYBOARD_SHORTCUTS,
+    } = await import("../shared/room-types");
+    
+    return c.json({
+      roomTypes: ALL_ROOM_TYPES,
+      byCategory: getRoomsByCategory(),
+      withMeta: getAllRoomsWithMeta(),
+      synonyms: ROOM_SYNONYMS,
+      categories: ROOM_CATEGORIES,
+      shortcuts: KEYBOARD_SHORTCUTS,
+      version: "v3.1",
+    });
+  } catch (error) {
+    console.error("Get room types error:", error);
+    return c.json({ error: "Failed to load room types" }, 500);
+  }
+});
+
 // POST /api/orders - Create new order (authenticated users only)
 app.post("/api/orders", async (c) => {
   try {
