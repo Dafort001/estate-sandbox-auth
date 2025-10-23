@@ -34,6 +34,7 @@ import AILab from "@/pages/ai-lab";
 import DemoUpload from "@/pages/demo-upload";
 import DemoJobs from "@/pages/demo-jobs";
 import DemoJobDetail from "@/pages/demo-job-detail";
+import DocsRoomsSpec from "@/pages/docs-rooms-spec";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -70,6 +71,7 @@ function Router() {
       <Route path="/demo-upload" component={DemoUpload} />
       <Route path="/demo-jobs" component={DemoJobs} />
       <Route path="/job/:id" component={DemoJobDetail} />
+      <Route path="/docs/rooms-spec" component={DocsRoomsSpec} />
       <Route component={NotFound} />
     </Switch>
   );
