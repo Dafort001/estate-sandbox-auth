@@ -44,6 +44,11 @@ import AppSplash from "@/pages/app/splash";
 import AppCamera from "@/pages/app/camera";
 import AppGallery from "@/pages/app/gallery";
 import AppUpload from "@/pages/app/upload";
+import UploadsOverview from "@/pages/portal/uploads-overview";
+import GallerySelection from "@/pages/portal/gallery-selection";
+import Payment from "@/pages/portal/payment";
+import StatusTimeline from "@/pages/portal/status-timeline";
+import Delivery from "@/pages/portal/delivery";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -90,6 +95,11 @@ function Router() {
       <Route path="/app/camera" component={AppCamera} />
       <Route path="/app/gallery" component={AppGallery} />
       <Route path="/app/upload" component={AppUpload} />
+      <Route path="/portal/uploads" component={UploadsOverview} />
+      <Route path="/portal/job/:jobId" component={GallerySelection} />
+      <Route path="/portal/payment/:jobId" component={Payment} />
+      <Route path="/portal/status/:jobId" component={StatusTimeline} />
+      <Route path="/portal/delivery/:jobId" component={Delivery} />
       <Route component={NotFound} />
     </Switch>
   );
