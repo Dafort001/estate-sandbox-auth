@@ -36,6 +36,10 @@ import DemoJobs from "@/pages/demo-jobs";
 import DemoJobDetail from "@/pages/demo-job-detail";
 import DocsRoomsSpec from "@/pages/docs-rooms-spec";
 import GalleryClassify from "@/pages/gallery-classify";
+import CaptureIndex from "@/pages/capture/index";
+import CaptureCamera from "@/pages/capture/camera";
+import CaptureReview from "@/pages/capture/review";
+import CaptureUpload from "@/pages/capture/upload";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -74,6 +78,10 @@ function Router() {
       <Route path="/job/:id" component={DemoJobDetail} />
       <Route path="/docs/rooms-spec" component={DocsRoomsSpec} />
       <Route path="/gallery/classify/:shootId" component={GalleryClassify} />
+      <Route path="/capture" component={CaptureIndex} />
+      <Route path="/capture/camera" component={CaptureCamera} />
+      <Route path="/capture/review" component={CaptureReview} />
+      <Route path="/capture/upload" component={CaptureUpload} />
       <Route component={NotFound} />
     </Switch>
   );
